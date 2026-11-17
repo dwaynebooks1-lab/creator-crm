@@ -67,6 +67,23 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string;
   );
 }
 
+function ProLock({ feature, onUpgrade }: { feature: string; onUpgrade: () => void }) {
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-[var(--card)]/80 backdrop-blur-[6px]">
+      <div className="rounded-full bg-brand-500/20 border border-brand-500/30 p-3 mb-3">
+        <svg className="h-6 w-6 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold mb-1">Pro Feature</p>
+      <p className="text-xs text-[var(--muted)] mb-3 text-center max-w-[200px]">{feature}</p>
+      <button onClick={onUpgrade} className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-600 transition">
+        Upgrade to Pro — $29/mo
+      </button>
+    </div>
+  );
+}
+
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3000);
@@ -603,8 +620,8 @@ export default function Dashboard() {
               <input type="file" accept=".csv" onChange={handleCSVFile} className="hidden" />
             </label>
             {fans.length > 0 && (
-              <button onClick={exportCSV} className="rounded-lg border border-[var(--border)] px-3 sm:px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition">
-                Export
+              <button onClick={isPro ? exportCSV : handleUpgrade} className="rounded-lg border border-[var(--border)] px-3 sm:px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition">
+                Export {!isPro && "🔒"}
               </button>
             )}
             <button
@@ -747,30 +764,114 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Retention Stats */}
+        {/* Retention Stats — Pro locked */}
         {fans.length >= 3 && (
-          <div className="mb-6 grid gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-xs text-[var(--muted)] mb-1">Fans at Risk</p>
-              <p className={`text-xl font-bold ${fans.filter(f => churnScore(f) >= 60).length > 0 ? "text-red-400" : "text-green-400"}`}>
-                {fans.filter(f => churnScore(f) >= 60).length}
-              </p>
-              <p className="text-xs text-[var(--muted)]">churn score 60+</p>
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock retention analytics to see which fans are at risk" onUpgrade={handleUpgrade} />}
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <p className="text-xs text-[var(--muted)] mb-1">Fans at Risk</p>
+                <p className={`text-xl font-bold ${fans.filter(f => churnScore(f) >= 60).length > 0 ? "text-red-400" : "text-green-400"}`}>
+                  {fans.filter(f => churnScore(f) >= 60).length}
+                </p>
+                <p className="text-xs text-[var(--muted)]">churn score 60+</p>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <p className="text-xs text-[var(--muted)] mb-1">Revenue at Risk</p>
+                <p className="text-xl font-bold text-red-400">${revenueAtRisk.toLocaleString()}</p>
+                <p className="text-xs text-[var(--muted)]">from high-risk fans</p>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <p className="text-xs text-[var(--muted)] mb-1">Healthy Fans</p>
+                <p className="text-xl font-bold text-green-400">{fans.filter(f => churnScore(f) < 35).length}</p>
+                <p className="text-xs text-[var(--muted)]">low churn risk</p>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <p className="text-xs text-[var(--muted)] mb-1">Retention Rate</p>
+                <p className="text-xl font-bold">{fans.length > 0 ? Math.round((fans.filter(f => churnScore(f) < 60).length / fans.length) * 100) : 100}%</p>
+                <p className="text-xs text-[var(--muted)]">fans below risk threshold</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-xs text-[var(--muted)] mb-1">Revenue at Risk</p>
-              <p className="text-xl font-bold text-red-400">${revenueAtRisk.toLocaleString()}</p>
-              <p className="text-xs text-[var(--muted)]">from high-risk fans</p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-xs text-[var(--muted)] mb-1">Healthy Fans</p>
-              <p className="text-xl font-bold text-green-400">{fans.filter(f => churnScore(f) < 35).length}</p>
-              <p className="text-xs text-[var(--muted)]">low churn risk</p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-xs text-[var(--muted)] mb-1">Retention Rate</p>
-              <p className="text-xl font-bold">{fans.length > 0 ? Math.round((fans.filter(f => churnScore(f) < 60).length / fans.length) * 100) : 100}%</p>
-              <p className="text-xs text-[var(--muted)]">fans below risk threshold</p>
+          </div>
+        )}
+
+        {/* Pro Analytics Section — Engagement Heatmap + Fan Spending Distribution */}
+        {fans.length >= 3 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock advanced analytics: engagement heatmap, spending breakdown, and more" onUpgrade={handleUpgrade} />}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Engagement Heatmap */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <span>📅</span> Messaging Activity
+                  <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+                </h3>
+                <div className="grid grid-cols-7 gap-1">
+                  {(() => {
+                    const days = Array.from({ length: 28 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - (27 - i));
+                      const dateStr = d.toISOString().split("T")[0];
+                      const count = fans.filter(f => f.last_message_at?.startsWith(dateStr)).length;
+                      return { date: d, count };
+                    });
+                    return days.map((d, i) => (
+                      <div key={i} title={`${d.date.toLocaleDateString()}: ${d.count} messaged`}
+                        className={`aspect-square rounded-sm ${
+                          d.count >= 3 ? "bg-brand-500" : d.count >= 2 ? "bg-brand-500/70" : d.count >= 1 ? "bg-brand-500/40" : "bg-white/5"
+                        }`} />
+                    ));
+                  })()}
+                </div>
+                <div className="flex items-center gap-2 mt-3 text-[10px] text-[var(--muted)]">
+                  <span>Less</span>
+                  <div className="flex gap-0.5">
+                    <div className="h-2.5 w-2.5 rounded-sm bg-white/5" />
+                    <div className="h-2.5 w-2.5 rounded-sm bg-brand-500/40" />
+                    <div className="h-2.5 w-2.5 rounded-sm bg-brand-500/70" />
+                    <div className="h-2.5 w-2.5 rounded-sm bg-brand-500" />
+                  </div>
+                  <span>More</span>
+                </div>
+              </div>
+
+              {/* Spending Distribution */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <span>💎</span> Fan Value Tiers
+                  <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+                </h3>
+                <div className="space-y-2">
+                  {(() => {
+                    const tiers = [
+                      { label: "Diamond ($5k+)", min: 5000, color: "bg-cyan-500", text: "text-cyan-300" },
+                      { label: "Gold ($1k+)", min: 1000, color: "bg-yellow-500", text: "text-yellow-300" },
+                      { label: "Silver ($500+)", min: 500, color: "bg-gray-400", text: "text-gray-300" },
+                      { label: "Bronze ($100+)", min: 100, color: "bg-amber-700", text: "text-amber-500" },
+                      { label: "Starter (<$100)", min: 0, color: "bg-white/20", text: "text-[var(--muted)]" },
+                    ];
+                    return tiers.map(t => {
+                      const count = t.min === 0
+                        ? fans.filter(f => (f.total_spent || 0) < 100).length
+                        : fans.filter(f => {
+                            const s = f.total_spent || 0;
+                            const nextTier = tiers[tiers.indexOf(t) - 1];
+                            return s >= t.min && (!nextTier || s < nextTier.min);
+                          }).length;
+                      return (
+                        <div key={t.label} className="flex items-center gap-3">
+                          <div className={`h-3 w-3 rounded-full ${t.color}`} />
+                          <span className={`text-xs flex-1 ${t.text}`}>{t.label}</span>
+                          <span className="text-xs font-medium">{count}</span>
+                          <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div className={`h-full rounded-full ${t.color}`} style={{ width: `${fans.length > 0 ? (count / fans.length) * 100 : 0}%` }} />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -808,7 +909,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Revenue by Tag Chart */}
+        {/* Revenue by Tag Chart — Pro locked */}
         {fans.length >= 2 && (() => {
           const tagRevenue: Record<string, number> = {};
           fans.forEach((f) => { tagRevenue[f.tag] = (tagRevenue[f.tag] || 0) + (f.total_spent || 0); });
@@ -818,29 +919,37 @@ export default function Dashboard() {
             whale: "bg-purple-500", vip: "bg-amber-500", regular: "bg-blue-500", new: "bg-green-500", "at-risk": "bg-red-500",
           };
           return (
-            <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
-              <h3 className="text-sm font-semibold mb-4">Revenue by Tag</h3>
-              <div className="space-y-3">
-                {entries.map(([tag, rev]) => (
-                  <div key={tag}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium">{TAG_LABELS[tag as Tag] || tag}</span>
-                      <span className="text-xs text-[var(--muted)]">${rev.toLocaleString()}</span>
+            <div className="relative mb-6">
+              {!isPro && <ProLock feature="Unlock revenue breakdown by fan category" onUpgrade={handleUpgrade} />}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  Revenue by Tag
+                  {!isPro && <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>}
+                </h3>
+                <div className="space-y-3">
+                  {entries.map(([tag, rev]) => (
+                    <div key={tag}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium">{TAG_LABELS[tag as Tag] || tag}</span>
+                        <span className="text-xs text-[var(--muted)]">${rev.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div className={`h-full rounded-full ${TAG_BAR_COLORS[tag] || "bg-brand-500"} transition-all`} style={{ width: `${(rev / max) * 100}%` }} />
+                      </div>
                     </div>
-                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className={`h-full rounded-full ${TAG_BAR_COLORS[tag] || "bg-brand-500"} transition-all`} style={{ width: `${(rev / max) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {totalRevenue > 0 && <p className="mt-3 text-xs text-[var(--muted)]">Total: ${totalRevenue.toLocaleString()}</p>}
               </div>
-              {totalRevenue > 0 && <p className="mt-3 text-xs text-[var(--muted)]">Total: ${totalRevenue.toLocaleString()}</p>}
             </div>
           );
         })()}
 
-        {/* Top Fans Leaderboard + Smart Tag Suggestions */}
+        {/* Top Fans Leaderboard + Smart Tag Suggestions — Pro locked */}
         {fans.length >= 3 && (
-          <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock leaderboard and AI tag suggestions" onUpgrade={handleUpgrade} />}
+            <div className="grid gap-3 sm:grid-cols-2">
             {/* Leaderboard */}
             <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -907,6 +1016,7 @@ export default function Dashboard() {
                   ));
                 })()}
               </div>
+            </div>
             </div>
           </div>
         )}
