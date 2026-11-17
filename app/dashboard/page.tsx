@@ -99,6 +99,9 @@ export default function Dashboard() {
   const [formError, setFormError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Fan | null>(null);
   const [toast, setToast] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importPreview, setImportPreview] = useState<Array<{ name: string; tag: Tag; total_spent: number; notes: string }>>([]);
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -238,6 +241,65 @@ export default function Dashboard() {
     setToast("Fans exported to CSV!");
   }
 
+  function handleCSVFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      const lines = text.split("\n").filter((l) => l.trim());
+      if (lines.length < 2) return;
+
+      const headers = lines[0].toLowerCase().split(",").map((h) => h.trim().replace(/"/g, ""));
+      const nameIdx = headers.findIndex((h) => h === "name" || h === "fan" || h === "fan name");
+      const tagIdx = headers.findIndex((h) => h === "tag" || h === "category" || h === "type");
+      const spentIdx = headers.findIndex((h) => h.includes("spent") || h.includes("revenue") || h.includes("amount"));
+      const notesIdx = headers.findIndex((h) => h === "notes" || h === "note" || h === "comments");
+
+      if (nameIdx === -1) { setFormError("CSV must have a 'Name' column"); return; }
+
+      const validTags = ["whale", "vip", "regular", "new", "at-risk"];
+      const rows = lines.slice(1).map((line) => {
+        const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+        const rawTag = tagIdx >= 0 ? cols[tagIdx]?.toLowerCase().replace(/\s+/g, "-") : "new";
+        return {
+          name: cols[nameIdx] || "",
+          tag: (validTags.includes(rawTag) ? rawTag : "new") as Tag,
+          total_spent: spentIdx >= 0 ? parseFloat(cols[spentIdx]?.replace(/[$,]/g, "")) || 0 : 0,
+          notes: notesIdx >= 0 ? cols[notesIdx] || "" : "",
+        };
+      }).filter((r) => r.name.trim());
+
+      setImportPreview(rows);
+      setShowImportModal(true);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  async function handleImportConfirm() {
+    if (!importPreview.length) return;
+    setImporting(true);
+
+    const remaining = isPro ? Infinity : FREE_FAN_LIMIT - fans.length;
+    const toImport = importPreview.slice(0, remaining);
+
+    const { error } = await supabase.from("fans").insert(
+      toImport.map((f) => ({ creator_id: user!.id, name: f.name, tag: f.tag, total_spent: f.total_spent, notes: f.notes }))
+    );
+
+    if (!error) {
+      await loadFans();
+      setShowImportModal(false);
+      setImportPreview([]);
+      const skipped = importPreview.length - toImport.length;
+      setToast(`${toImport.length} fans imported!${skipped > 0 ? ` (${skipped} skipped — upgrade to Pro for unlimited)` : ""}`);
+    } else {
+      setFormError(error.message);
+    }
+    setImporting(false);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -326,9 +388,13 @@ export default function Dashboard() {
             <p className="text-xs sm:text-sm text-[var(--muted)]">Your fan overview</p>
           </div>
           <div className="flex gap-2">
+            <label className="rounded-lg border border-[var(--border)] px-3 sm:px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition cursor-pointer">
+              Import CSV
+              <input type="file" accept=".csv" onChange={handleCSVFile} className="hidden" />
+            </label>
             {fans.length > 0 && (
               <button onClick={exportCSV} className="rounded-lg border border-[var(--border)] px-3 sm:px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition">
-                Export CSV
+                Export
               </button>
             )}
             <button
@@ -383,6 +449,36 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Revenue by Tag Chart */}
+        {fans.length >= 2 && (() => {
+          const tagRevenue: Record<string, number> = {};
+          fans.forEach((f) => { tagRevenue[f.tag] = (tagRevenue[f.tag] || 0) + (f.total_spent || 0); });
+          const entries = Object.entries(tagRevenue).sort((a, b) => b[1] - a[1]);
+          const max = Math.max(...entries.map((e) => e[1]), 1);
+          const TAG_BAR_COLORS: Record<string, string> = {
+            whale: "bg-purple-500", vip: "bg-amber-500", regular: "bg-blue-500", new: "bg-green-500", "at-risk": "bg-red-500",
+          };
+          return (
+            <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-4">Revenue by Tag</h3>
+              <div className="space-y-3">
+                {entries.map(([tag, rev]) => (
+                  <div key={tag}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium">{TAG_LABELS[tag as Tag] || tag}</span>
+                      <span className="text-xs text-[var(--muted)]">${rev.toLocaleString()}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div className={`h-full rounded-full ${TAG_BAR_COLORS[tag] || "bg-brand-500"} transition-all`} style={{ width: `${(rev / max) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {totalRevenue > 0 && <p className="mt-3 text-xs text-[var(--muted)]">Total: ${totalRevenue.toLocaleString()}</p>}
+            </div>
+          );
+        })()}
+
         {/* Search + Filters */}
         <div className="mb-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1 max-w-sm">
@@ -414,13 +510,38 @@ export default function Dashboard() {
         {/* Fan Table */}
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
           {fans.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="mb-4 text-5xl">👥</div>
-              <p className="text-lg font-medium mb-2">No fans yet</p>
-              <p className="text-sm text-[var(--muted)] mb-6">Add your first fan to start tracking revenue, renewals, and engagement.</p>
-              <button onClick={openAddModal} className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
-                + Add Your First Fan
-              </button>
+            <div className="p-8 sm:p-12">
+              <div className="text-center mb-8">
+                <div className="mb-4 text-5xl">👋</div>
+                <h2 className="text-xl font-bold mb-2">Welcome to CreatorCRM!</h2>
+                <p className="text-sm text-[var(--muted)]">Get started in 3 easy steps</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3 mb-8 max-w-2xl mx-auto">
+                <div className="rounded-lg border border-[var(--border)] p-4 text-center">
+                  <div className="text-2xl mb-2">1</div>
+                  <p className="text-sm font-medium mb-1">Add your fans</p>
+                  <p className="text-xs text-[var(--muted)]">Manually or import from CSV</p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] p-4 text-center">
+                  <div className="text-2xl mb-2">2</div>
+                  <p className="text-sm font-medium mb-1">Tag &amp; organize</p>
+                  <p className="text-xs text-[var(--muted)]">Whales, VIPs, At-Risk, New</p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] p-4 text-center">
+                  <div className="text-2xl mb-2">3</div>
+                  <p className="text-sm font-medium mb-1">Track &amp; grow</p>
+                  <p className="text-xs text-[var(--muted)]">Monitor renewals &amp; revenue</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onClick={openAddModal} className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+                  + Add Your First Fan
+                </button>
+                <label className="rounded-lg border border-[var(--border)] px-6 py-2.5 text-sm font-medium text-[var(--muted)] hover:text-white transition cursor-pointer text-center">
+                  Import from CSV
+                  <input type="file" accept=".csv" onChange={handleCSVFile} className="hidden" />
+                </label>
+              </div>
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center">
@@ -605,6 +726,60 @@ export default function Dashboard() {
               <button onClick={handleSaveFan} disabled={saving || !fanForm.name.trim()}
                 className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
                 {saving ? "Saving..." : editingFan ? "Save Changes" : "Add Fan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Preview Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => { setShowImportModal(false); setImportPreview([]); }}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-xl bg-[var(--card)] border border-[var(--border)] p-6" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setShowImportModal(false); setImportPreview([]); }} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
+            <h2 className="text-xl font-bold mb-2">Import Fans</h2>
+            <p className="text-sm text-[var(--muted)] mb-4">
+              {importPreview.length} fan{importPreview.length !== 1 ? "s" : ""} found in CSV
+              {!isPro && importPreview.length + fans.length > FREE_FAN_LIMIT && (
+                <span className="text-amber-400"> (only {FREE_FAN_LIMIT - fans.length} can be imported on Free plan)</span>
+              )}
+            </p>
+            <div className="rounded-lg border border-[var(--border)] overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-[var(--muted)]">
+                    <th className="px-3 py-2 text-left font-medium">Name</th>
+                    <th className="px-3 py-2 text-left font-medium">Tag</th>
+                    <th className="px-3 py-2 text-left font-medium">Spent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreview.slice(0, 10).map((f, i) => (
+                    <tr key={i} className="border-b border-[var(--border)]">
+                      <td className="px-3 py-2">{f.name}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[f.tag]}`}>{TAG_LABELS[f.tag]}</span>
+                      </td>
+                      <td className="px-3 py-2">${f.total_spent.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {importPreview.length > 10 && (
+                <p className="px-3 py-2 text-xs text-[var(--muted)]">...and {importPreview.length - 10} more</p>
+              )}
+            </div>
+            {formError && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{formError}</div>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => { setShowImportModal(false); setImportPreview([]); }} className="flex-1 rounded-lg border border-[var(--border)] py-2.5 text-sm font-medium text-[var(--muted)] hover:text-white transition">
+                Cancel
+              </button>
+              <button onClick={handleImportConfirm} disabled={importing}
+                className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
+                {importing ? "Importing..." : `Import ${Math.min(importPreview.length, isPro ? importPreview.length : FREE_FAN_LIMIT - fans.length)} Fans`}
               </button>
             </div>
           </div>

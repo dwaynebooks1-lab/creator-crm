@@ -172,8 +172,14 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-        <p>CreatorCRM — Built for creators, by creators.</p>
+      <footer className="border-t border-[var(--border)] px-4 py-8">
+        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[var(--muted)]">
+          <p>CreatorCRM — Built for creators, by creators.</p>
+          <div className="flex gap-6">
+            <Link href="/terms" className="hover:text-white transition">Terms</Link>
+            <Link href="/privacy" className="hover:text-white transition">Privacy</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
