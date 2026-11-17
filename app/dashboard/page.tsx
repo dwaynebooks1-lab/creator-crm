@@ -580,11 +580,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="mb-6 sm:mb-8 flex items-center justify-between">
+        {/* Personalized Greeting */}
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
-            <p className="text-xs sm:text-sm text-[var(--muted)]">Your fan overview</p>
+            <h1 className="text-xl sm:text-2xl font-bold">
+              {(() => {
+                const h = new Date().getHours();
+                const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+                const name = user?.user_metadata?.name?.split(" ")[0] || "";
+                return `${greeting}${name ? `, ${name}` : ""}`;
+              })()}
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--muted)]">
+              {fans.length === 0 ? "Let's get started!" :
+               actionItems.length > 0 ? `You have ${actionItems.length} fan${actionItems.length !== 1 ? "s" : ""} that need attention today.` :
+               "All fans are looking good today!"}
+            </p>
           </div>
           <div className="flex gap-2">
             <label className="rounded-lg border border-[var(--border)] px-3 sm:px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition cursor-pointer">
@@ -827,6 +838,79 @@ export default function Dashboard() {
           );
         })()}
 
+        {/* Top Fans Leaderboard + Smart Tag Suggestions */}
+        {fans.length >= 3 && (
+          <div className="mb-6 grid gap-3 sm:grid-cols-2">
+            {/* Leaderboard */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span>🏆</span> Top Fans
+              </h3>
+              <div className="space-y-2">
+                {[...fans].sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0)).slice(0, 5).map((fan, i) => {
+                  const medals = ["🥇", "🥈", "🥉"];
+                  return (
+                    <div key={fan.id} onClick={() => setSelected(fan)} className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/5 cursor-pointer transition">
+                      <span className="text-lg w-6 text-center">{medals[i] || `#${i + 1}`}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{fan.name}</p>
+                        <p className="text-xs text-[var(--muted)]">{TAG_LABELS[fan.tag]}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-brand-400">${(fan.total_spent || 0).toLocaleString()}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Smart Tag Suggestions */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span>💡</span> Smart Suggestions
+              </h3>
+              <div className="space-y-2">
+                {(() => {
+                  const suggestions: { fan: Fan; suggestion: string; newTag: Tag; reason: string }[] = [];
+                  fans.forEach(f => {
+                    if (f.tag !== "whale" && f.total_spent >= 500) {
+                      suggestions.push({ fan: f, suggestion: `Upgrade to Whale`, newTag: "whale", reason: `$${f.total_spent.toLocaleString()} spent` });
+                    } else if (f.tag !== "vip" && f.tag !== "whale" && f.total_spent >= 150) {
+                      suggestions.push({ fan: f, suggestion: `Upgrade to VIP`, newTag: "vip", reason: `$${f.total_spent.toLocaleString()} spent` });
+                    }
+                    if (f.tag !== "at-risk" && f.last_message_at) {
+                      const days = Math.floor((Date.now() - new Date(f.last_message_at).getTime()) / 86400000);
+                      if (days >= 14) {
+                        suggestions.push({ fan: f, suggestion: `Mark At-Risk`, newTag: "at-risk", reason: `${days}d inactive` });
+                      }
+                    }
+                  });
+                  if (suggestions.length === 0) return (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-green-400 font-medium">All fans are properly tagged!</p>
+                      <p className="text-xs text-[var(--muted)] mt-1">No changes needed right now.</p>
+                    </div>
+                  );
+                  return suggestions.slice(0, 5).map(s => (
+                    <div key={`${s.fan.id}-${s.newTag}`} className="flex items-center gap-3 rounded-lg border border-[var(--border)] p-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{s.fan.name}</p>
+                        <p className="text-xs text-[var(--muted)]">{s.reason}</p>
+                      </div>
+                      <button onClick={async () => {
+                        await supabase.from("fans").update({ tag: s.newTag }).eq("id", s.fan.id);
+                        setFans(prev => prev.map(f => f.id === s.fan.id ? { ...f, tag: s.newTag } : f));
+                        setToast(`${s.fan.name} tagged as ${TAG_LABELS[s.newTag]}!`);
+                      }} className="shrink-0 rounded-lg bg-brand-500/20 border border-brand-500/30 px-2.5 py-1 text-xs font-medium text-brand-400 hover:bg-brand-500/30 transition">
+                        {s.suggestion}
+                      </button>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search + Filters */}
         <div className="mb-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1 max-w-sm">
@@ -992,7 +1076,15 @@ export default function Dashboard() {
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
                       </td>
                       <td className="px-4 py-3" onClick={() => setSelected(fan)}>${(fan.total_spent || 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 hidden md:table-cell" onClick={() => setSelected(fan)}>{daysAgo(fan.last_message_at)}</td>
+                      <td className="px-4 py-3 hidden md:table-cell" onClick={() => setSelected(fan)}>
+                        <span className={(() => {
+                          if (!fan.last_message_at) return "text-red-400";
+                          const d = Math.floor((Date.now() - new Date(fan.last_message_at).getTime()) / 86400000);
+                          return d <= 1 ? "text-green-400" : d <= 3 ? "text-[var(--muted)]" : d <= 7 ? "text-amber-400" : "text-red-400";
+                        })()}>
+                          {daysAgo(fan.last_message_at)}
+                        </span>
+                      </td>
                       <td className="px-4 py-3" onClick={() => setSelected(fan)}>
                         <span className={(() => {
                           if (!fan.renewal_date) return "text-[var(--muted)]";
@@ -1038,12 +1130,30 @@ export default function Dashboard() {
               </div>
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Last Messaged</p>
-                <p className="font-medium">{daysAgo(selected.last_message_at)}</p>
+                <p className={`font-medium ${(() => {
+                  if (!selected.last_message_at) return "text-red-400";
+                  const d = Math.floor((Date.now() - new Date(selected.last_message_at).getTime()) / 86400000);
+                  return d <= 1 ? "text-green-400" : d <= 7 ? "" : "text-red-400";
+                })()}`}>{daysAgo(selected.last_message_at)}</p>
               </div>
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Renewal In</p>
                 <p className="font-medium">{daysUntil(selected.renewal_date)}</p>
               </div>
+              {selected.created_at && (
+                <div className="rounded-lg bg-white/5 p-4">
+                  <p className="text-xs text-[var(--muted)] mb-1">Fan Since</p>
+                  <p className="font-medium">
+                    {(() => {
+                      const days = Math.floor((Date.now() - new Date(selected.created_at!).getTime()) / 86400000);
+                      if (days < 7) return `${days} day${days !== 1 ? "s" : ""}`;
+                      if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) !== 1 ? "s" : ""}`;
+                      if (days < 365) return `${Math.floor(days / 30)} month${Math.floor(days / 30) !== 1 ? "s" : ""}`;
+                      return `${Math.floor(days / 365)} year${Math.floor(days / 365) !== 1 ? "s" : ""}`;
+                    })()}
+                  </p>
+                </div>
+              )}
               {selected.notes && (
                 <div className="rounded-lg bg-white/5 p-4">
                   <p className="text-xs text-[var(--muted)] mb-1">Notes</p>
