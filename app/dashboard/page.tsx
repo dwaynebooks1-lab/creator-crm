@@ -1,29 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient, User } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+type Tag = "whale" | "vip" | "regular" | "new" | "at-risk";
 
 type Fan = {
-  id: number;
+  id: string;
   name: string;
-  tag: "whale" | "vip" | "regular" | "new" | "at-risk";
-  totalSpent: number;
-  lastMessage: string;
-  renewalDate: string;
+  tag: Tag;
+  total_spent: number;
+  last_message_at: string | null;
+  renewal_date: string | null;
   notes: string;
 };
 
-const DEMO_FANS: Fan[] = [
-  { id: 1, name: "Jake M.", tag: "whale", totalSpent: 2340, lastMessage: "2026-11-17", renewalDate: "2026-11-20", notes: "Tips on every PPV. Prefers exclusive content." },
-  { id: 2, name: "Chris R.", tag: "vip", totalSpent: 890, lastMessage: "2026-11-15", renewalDate: "2026-11-25", notes: "Loyal subscriber since March." },
-  { id: 3, name: "Alex T.", tag: "at-risk", totalSpent: 120, lastMessage: "2026-11-08", renewalDate: "2026-11-19", notes: "Hasn't opened last 3 messages. Might churn." },
-  { id: 4, name: "Sam K.", tag: "regular", totalSpent: 450, lastMessage: "2026-11-14", renewalDate: "2026-12-01", notes: "" },
-  { id: 5, name: "Jordan P.", tag: "new", totalSpent: 15, lastMessage: "2026-11-16", renewalDate: "2026-12-16", notes: "Just subscribed yesterday." },
-  { id: 6, name: "Taylor W.", tag: "at-risk", totalSpent: 60, lastMessage: "2026-11-05", renewalDate: "2026-11-18", notes: "Renewal TOMORROW. No engagement in 12 days." },
-  { id: 7, name: "Morgan D.", tag: "whale", totalSpent: 3100, lastMessage: "2026-11-17", renewalDate: "2026-12-10", notes: "Biggest tipper. Always responds to DMs within minutes." },
-  { id: 8, name: "Riley N.", tag: "regular", totalSpent: 200, lastMessage: "2026-11-12", renewalDate: "2026-11-28", notes: "Likes behind-the-scenes content." },
-];
-
-const TAG_COLORS: Record<Fan["tag"], string> = {
+const TAG_COLORS: Record<Tag, string> = {
   whale: "bg-purple-500/20 text-purple-300 border-purple-500/30",
   vip: "bg-amber-500/20 text-amber-300 border-amber-500/30",
   regular: "bg-blue-500/20 text-blue-300 border-blue-500/30",
@@ -31,7 +29,7 @@ const TAG_COLORS: Record<Fan["tag"], string> = {
   "at-risk": "bg-red-500/20 text-red-300 border-red-500/30",
 };
 
-const TAG_LABELS: Record<Fan["tag"], string> = {
+const TAG_LABELS: Record<Tag, string> = {
   whale: "Whale",
   vip: "VIP",
   regular: "Regular",
@@ -39,14 +37,16 @@ const TAG_LABELS: Record<Fan["tag"], string> = {
   "at-risk": "At Risk",
 };
 
-function daysAgo(iso: string) {
+function daysAgo(iso: string | null) {
+  if (!iso) return "Never";
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   if (diff === 0) return "Today";
   if (diff === 1) return "Yesterday";
   return `${diff}d ago`;
 }
 
-function daysUntil(iso: string) {
+function daysUntil(iso: string | null) {
+  if (!iso) return "—";
   const diff = Math.floor((new Date(iso).getTime() - Date.now()) / 86400000);
   if (diff < 0) return "Expired";
   if (diff === 0) return "Today!";
@@ -65,17 +65,82 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 }
 
 export default function Dashboard() {
-  const [fans] = useState<Fan[]>(DEMO_FANS);
-  const [filter, setFilter] = useState<Fan["tag"] | "all">("all");
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fans, setFans] = useState<Fan[]>([]);
+  const [filter, setFilter] = useState<Tag | "all">("all");
   const [selected, setSelected] = useState<Fan | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newFan, setNewFan] = useState({ name: "", tag: "new" as Fan["tag"], notes: "" });
+  const [newFan, setNewFan] = useState({ name: "", tag: "new" as Tag, total_spent: "", renewal_date: "", notes: "" });
+  const [saving, setSaving] = useState(false);
+
+  const loadFans = useCallback(async () => {
+    const { data } = await supabase
+      .from("fans")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setFans(data);
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      if (!u) {
+        router.push("/login");
+        return;
+      }
+      setUser(u);
+      setLoading(false);
+      loadFans();
+    });
+  }, [router, loadFans]);
+
+  async function handleAddFan() {
+    if (!newFan.name.trim()) return;
+    setSaving(true);
+
+    const { error } = await supabase.from("fans").insert({
+      creator_id: user!.id,
+      name: newFan.name.trim(),
+      tag: newFan.tag,
+      total_spent: parseFloat(newFan.total_spent) || 0,
+      renewal_date: newFan.renewal_date || null,
+      notes: newFan.notes.trim(),
+    });
+
+    if (!error) {
+      await loadFans();
+      setNewFan({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "" });
+      setShowAddModal(false);
+    }
+    setSaving(false);
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+  async function handleUpgrade() {
+    const res = await fetch("/api/checkout", { method: "POST" });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-[var(--muted)]">Loading...</p>
+      </div>
+    );
+  }
 
   const filtered = filter === "all" ? fans : fans.filter((f) => f.tag === filter);
-  const totalRevenue = fans.reduce((s, f) => s + f.totalSpent, 0);
+  const totalRevenue = fans.reduce((s, f) => s + (f.total_spent || 0), 0);
   const atRisk = fans.filter((f) => f.tag === "at-risk").length;
   const urgentRenewals = fans.filter((f) => {
-    const d = Math.floor((new Date(f.renewalDate).getTime() - Date.now()) / 86400000);
+    if (!f.renewal_date) return false;
+    const d = Math.floor((new Date(f.renewal_date).getTime() - Date.now()) / 86400000);
     return d >= 0 && d <= 3;
   }).length;
 
@@ -88,9 +153,20 @@ export default function Dashboard() {
             Creator<span className="text-brand-500">CRM</span>
           </Link>
           <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-[var(--muted)] sm:inline">Free Plan — 25 fans</span>
-            <button className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition">
+            <span className="hidden text-sm text-[var(--muted)] sm:inline">
+              {user?.user_metadata?.name || user?.email}
+            </span>
+            <button
+              onClick={handleUpgrade}
+              className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition"
+            >
               Upgrade to Pro
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition"
+            >
+              Log Out
             </button>
           </div>
         </div>
@@ -138,43 +214,57 @@ export default function Dashboard() {
 
         {/* Fan Table */}
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-[var(--muted)]">
-                <th className="px-4 py-3 font-medium">Fan</th>
-                <th className="px-4 py-3 font-medium">Tag</th>
-                <th className="px-4 py-3 font-medium hidden sm:table-cell">Spent</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">Last Msg</th>
-                <th className="px-4 py-3 font-medium">Renewal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((fan) => (
-                <tr
-                  key={fan.id}
-                  onClick={() => setSelected(fan)}
-                  className="cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5"
-                >
-                  <td className="px-4 py-3 font-medium">{fan.name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>
-                      {TAG_LABELS[fan.tag]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">${fan.totalSpent.toLocaleString()}</td>
-                  <td className="px-4 py-3 hidden md:table-cell">{daysAgo(fan.lastMessage)}</td>
-                  <td className="px-4 py-3">
-                    <span className={(() => {
-                      const d = Math.floor((new Date(fan.renewalDate).getTime() - Date.now()) / 86400000);
-                      return d <= 1 ? "text-red-400 font-semibold" : d <= 3 ? "text-amber-400" : "text-[var(--muted)]";
-                    })()}>
-                      {daysUntil(fan.renewalDate)}
-                    </span>
-                  </td>
+          {fans.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-lg font-medium mb-2">No fans yet</p>
+              <p className="text-sm text-[var(--muted)] mb-4">Add your first fan to start tracking</p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+              >
+                + Add Your First Fan
+              </button>
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] text-[var(--muted)]">
+                  <th className="px-4 py-3 font-medium">Fan</th>
+                  <th className="px-4 py-3 font-medium">Tag</th>
+                  <th className="px-4 py-3 font-medium hidden sm:table-cell">Spent</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Last Msg</th>
+                  <th className="px-4 py-3 font-medium">Renewal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((fan) => (
+                  <tr
+                    key={fan.id}
+                    onClick={() => setSelected(fan)}
+                    className="cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5"
+                  >
+                    <td className="px-4 py-3 font-medium">{fan.name}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>
+                        {TAG_LABELS[fan.tag]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">${(fan.total_spent || 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">{daysAgo(fan.last_message_at)}</td>
+                    <td className="px-4 py-3">
+                      <span className={(() => {
+                        if (!fan.renewal_date) return "text-[var(--muted)]";
+                        const d = Math.floor((new Date(fan.renewal_date).getTime() - Date.now()) / 86400000);
+                        return d <= 1 ? "text-red-400 font-semibold" : d <= 3 ? "text-amber-400" : "text-[var(--muted)]";
+                      })()}>
+                        {daysUntil(fan.renewal_date)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -191,15 +281,15 @@ export default function Dashboard() {
             <div className="space-y-4 mt-4">
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Lifetime Spent</p>
-                <p className="text-lg font-bold">${selected.totalSpent.toLocaleString()}</p>
+                <p className="text-lg font-bold">${(selected.total_spent || 0).toLocaleString()}</p>
               </div>
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Last Messaged</p>
-                <p className="font-medium">{daysAgo(selected.lastMessage)}</p>
+                <p className="font-medium">{daysAgo(selected.last_message_at)}</p>
               </div>
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Renewal In</p>
-                <p className="font-medium">{daysUntil(selected.renewalDate)}</p>
+                <p className="font-medium">{daysUntil(selected.renewal_date)}</p>
               </div>
               {selected.notes && (
                 <div className="rounded-lg bg-white/5 p-4">
@@ -242,7 +332,7 @@ export default function Dashboard() {
                 <label className="block text-sm text-[var(--muted)] mb-1">Tag</label>
                 <select
                   value={newFan.tag}
-                  onChange={(e) => setNewFan({ ...newFan, tag: e.target.value as Fan["tag"] })}
+                  onChange={(e) => setNewFan({ ...newFan, tag: e.target.value as Tag })}
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
                 >
                   <option value="new">New</option>
@@ -250,6 +340,27 @@ export default function Dashboard() {
                   <option value="vip">VIP</option>
                   <option value="whale">Whale</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm text-[var(--muted)] mb-1">Total Spent ($)</label>
+                <input
+                  type="number"
+                  value={newFan.total_spent}
+                  onChange={(e) => setNewFan({ ...newFan, total_spent: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-[var(--muted)] mb-1">Renewal Date</label>
+                <input
+                  type="date"
+                  value={newFan.renewal_date}
+                  onChange={(e) => setNewFan({ ...newFan, renewal_date: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                />
               </div>
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Notes</label>
@@ -262,10 +373,11 @@ export default function Dashboard() {
                 />
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition"
+                onClick={handleAddFan}
+                disabled={saving || !newFan.name.trim()}
+                className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50"
               >
-                Add Fan
+                {saving ? "Saving..." : "Add Fan"}
               </button>
             </div>
           </div>

@@ -49,10 +49,10 @@ export default function LandingPage() {
             Creator<span className="text-brand-500">CRM</span>
           </h1>
           <div className="flex gap-3">
-            <Link href="/dashboard" className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition">
+            <Link href="/login" className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition">
               Log In
             </Link>
-            <Link href="/dashboard" className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
+            <Link href="/signup" className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
               Get Started
             </Link>
           </div>
@@ -76,7 +76,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
-              href="/dashboard"
+              href="/signup"
               className="rounded-lg bg-brand-500 px-8 py-3 text-lg font-semibold text-white hover:bg-brand-600 transition"
             >
               Start Free — No Card Needed
@@ -156,7 +156,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Link
-                  href="/dashboard"
+                  href="/signup"
                   className={`block rounded-lg px-6 py-3 text-center font-medium transition ${
                     p.highlight
                       ? "bg-brand-500 text-white hover:bg-brand-600"
