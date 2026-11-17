@@ -23,6 +23,7 @@ type Fan = {
   last_message_at: string | null;
   renewal_date: string | null;
   notes: string;
+  created_at?: string;
 };
 
 type Creator = { id: string; plan: "free" | "pro" };
@@ -104,6 +105,11 @@ export default function Dashboard() {
   const [importPreview, setImportPreview] = useState<Array<{ name: string; tag: Tag; total_spent: number; notes: string }>>([]);
 
   const [announcement, setAnnouncement] = useState("");
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [showBulkTag, setShowBulkTag] = useState(false);
+  const [revenueGoal, setRevenueGoal] = useState<number | null>(null);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -144,6 +150,12 @@ export default function Dashboard() {
 
       setLoading(false);
       loadFans();
+
+      // Load revenue goal
+      try {
+        const saved = localStorage.getItem("crm_revenue_goal");
+        if (saved) setRevenueGoal(parseFloat(saved));
+      } catch {}
 
       // Load active announcement
       const { data: ann } = await supabase
@@ -243,6 +255,58 @@ export default function Dashboard() {
       setConfirmDelete(null);
       setToast(`${fan.name} deleted`);
     }
+  }
+
+  async function markMessaged(fanId: string, fanName: string) {
+    const now = new Date().toISOString();
+    await supabase.from("fans").update({ last_message_at: now }).eq("id", fanId);
+    setFans(prev => prev.map(f => f.id === fanId ? { ...f, last_message_at: now } : f));
+    setToast(`${fanName} marked as messaged!`);
+  }
+
+  async function bulkMarkMessaged() {
+    if (bulkSelected.size === 0) return;
+    const now = new Date().toISOString();
+    const ids = Array.from(bulkSelected);
+    await supabase.from("fans").update({ last_message_at: now }).in("id", ids);
+    setFans(prev => prev.map(f => ids.includes(f.id) ? { ...f, last_message_at: now } : f));
+    setToast(`${ids.length} fan${ids.length !== 1 ? "s" : ""} marked as messaged!`);
+    setBulkSelected(new Set());
+  }
+
+  async function bulkChangeTag(tag: Tag) {
+    if (bulkSelected.size === 0) return;
+    const ids = Array.from(bulkSelected);
+    await supabase.from("fans").update({ tag }).in("id", ids);
+    setFans(prev => prev.map(f => ids.includes(f.id) ? { ...f, tag } : f));
+    setToast(`${ids.length} fan${ids.length !== 1 ? "s" : ""} tagged as ${TAG_LABELS[tag]}!`);
+    setBulkSelected(new Set());
+    setShowBulkTag(false);
+  }
+
+  function toggleBulkSelect(id: string) {
+    setBulkSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (bulkSelected.size === filtered.length) {
+      setBulkSelected(new Set());
+    } else {
+      setBulkSelected(new Set(filtered.map(f => f.id)));
+    }
+  }
+
+  function saveRevenueGoal(val: string) {
+    const num = parseFloat(val);
+    if (num > 0) {
+      setRevenueGoal(num);
+      localStorage.setItem("crm_revenue_goal", String(num));
+    }
+    setShowGoalModal(false);
   }
 
   function exportCSV() {
@@ -423,6 +487,33 @@ export default function Dashboard() {
 
   const revenueAtRisk = fans.filter(f => churnScore(f) >= 60).reduce((s, f) => s + (f.total_spent || 0), 0);
 
+  // Weekly summary
+  const weeklySummary = useMemo(() => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 86400000;
+    const twoWeeksAgo = now - 14 * 86400000;
+    const thisWeekFans = fans.filter(f => {
+      const d = new Date((f as Fan & { created_at?: string }).created_at || 0).getTime();
+      return d >= weekAgo;
+    }).length;
+    const lastWeekFans = fans.filter(f => {
+      const d = new Date((f as Fan & { created_at?: string }).created_at || 0).getTime();
+      return d >= twoWeeksAgo && d < weekAgo;
+    }).length;
+    const messaged7d = fans.filter(f => f.last_message_at && new Date(f.last_message_at).getTime() >= weekAgo).length;
+    return { thisWeekFans, lastWeekFans, messaged7d };
+  }, [fans]);
+
+  // Fan milestones
+  function getMilestones(spent: number): { label: string; color: string }[] {
+    const m: { label: string; color: string }[] = [];
+    if (spent >= 5000) m.push({ label: "Diamond ($5k+)", color: "text-cyan-300" });
+    else if (spent >= 1000) m.push({ label: "Gold ($1k+)", color: "text-yellow-300" });
+    else if (spent >= 500) m.push({ label: "Silver ($500+)", color: "text-gray-300" });
+    else if (spent >= 100) m.push({ label: "Bronze ($100+)", color: "text-amber-600" });
+    return m;
+  }
+
   function copyMessage(id: string, msg: string) {
     navigator.clipboard.writeText(msg);
     setCopiedId(id);
@@ -537,6 +628,76 @@ export default function Dashboard() {
           <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
         </div>
 
+        {/* Weekly Summary + Revenue Goal */}
+        {fans.length >= 2 && (
+          <div className="mb-6 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span>📈</span> This Week
+              </h3>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-xl font-bold">{weeklySummary.thisWeekFans}</p>
+                  <p className="text-xs text-[var(--muted)]">new fans</p>
+                  {weeklySummary.lastWeekFans > 0 && (
+                    <p className={`text-xs mt-0.5 ${weeklySummary.thisWeekFans >= weeklySummary.lastWeekFans ? "text-green-400" : "text-red-400"}`}>
+                      {weeklySummary.thisWeekFans >= weeklySummary.lastWeekFans ? "↑" : "↓"} vs last week ({weeklySummary.lastWeekFans})
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xl font-bold">{weeklySummary.messaged7d}</p>
+                  <p className="text-xs text-[var(--muted)]">messaged</p>
+                  <p className="text-xs text-[var(--muted)] mt-0.5">past 7 days</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold">{fans.length > 0 ? Math.round((weeklySummary.messaged7d / fans.length) * 100) : 0}%</p>
+                  <p className="text-xs text-[var(--muted)]">engagement</p>
+                  <p className="text-xs text-[var(--muted)] mt-0.5">of total fans</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span>🎯</span> Revenue Goal
+                </h3>
+                <button onClick={() => { setGoalInput(revenueGoal ? String(revenueGoal) : ""); setShowGoalModal(true); }}
+                  className="text-xs text-brand-400 hover:text-brand-300 transition">
+                  {revenueGoal ? "Edit" : "Set Goal"}
+                </button>
+              </div>
+              {revenueGoal ? (
+                <>
+                  <div className="flex items-end justify-between mb-2">
+                    <p className="text-xl font-bold">${totalRevenue.toLocaleString()}</p>
+                    <p className="text-sm text-[var(--muted)]">of ${revenueGoal.toLocaleString()}</p>
+                  </div>
+                  <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${totalRevenue >= revenueGoal ? "bg-green-500" : "bg-brand-500"}`}
+                      style={{ width: `${Math.min(100, (totalRevenue / revenueGoal) * 100)}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-2 ${totalRevenue >= revenueGoal ? "text-green-400" : "text-[var(--muted)]"}`}>
+                    {totalRevenue >= revenueGoal
+                      ? "🎉 Goal reached!"
+                      : `$${(revenueGoal - totalRevenue).toLocaleString()} to go`}
+                  </p>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-[var(--muted)] mb-2">Set a revenue target to track progress</p>
+                  <button onClick={() => { setGoalInput(""); setShowGoalModal(true); }}
+                    className="rounded-lg bg-brand-500/20 border border-brand-500/30 px-4 py-2 text-xs font-medium text-brand-400 hover:bg-brand-500/30 transition">
+                    Set Revenue Goal
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Action Center */}
         {actionItems.length > 0 && (
           <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
@@ -567,10 +728,17 @@ export default function Dashboard() {
                         <p className="text-xs text-amber-400">{item.reason}</p>
                       </div>
                     </div>
-                    <button onClick={() => copyMessage(item.fan.id, item.message)}
-                      className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${copiedId === item.fan.id ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-brand-500 text-white hover:bg-brand-600"}`}>
-                      {copiedId === item.fan.id ? "Copied!" : "Copy Message"}
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => copyMessage(item.fan.id, item.message)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${copiedId === item.fan.id ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-brand-500 text-white hover:bg-brand-600"}`}>
+                        {copiedId === item.fan.id ? "Copied!" : "Copy Message"}
+                      </button>
+                      <button onClick={() => markMessaged(item.fan.id, item.fan.name)}
+                        className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-green-300 hover:border-green-500/30 transition"
+                        title="Mark as messaged">
+                        ✓ Sent
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -700,6 +868,37 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {bulkSelected.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand-500/30 bg-brand-500/5 p-3">
+            <span className="text-sm font-medium">{bulkSelected.size} selected</span>
+            <button onClick={bulkMarkMessaged}
+              className="rounded-lg bg-green-500/20 border border-green-500/30 px-3 py-1.5 text-xs font-medium text-green-300 hover:bg-green-500/30 transition">
+              ✓ Mark All Messaged
+            </button>
+            <div className="relative">
+              <button onClick={() => setShowBulkTag(!showBulkTag)}
+                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-white transition">
+                Change Tag ▾
+              </button>
+              {showBulkTag && (
+                <div className="absolute top-full left-0 mt-1 z-20 rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg py-1 min-w-[120px]">
+                  {(["whale", "vip", "regular", "new", "at-risk"] as Tag[]).map(t => (
+                    <button key={t} onClick={() => bulkChangeTag(t)}
+                      className="block w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition">
+                      {TAG_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={() => setBulkSelected(new Set())}
+              className="ml-auto text-xs text-[var(--muted)] hover:text-white transition">
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* Fan Table */}
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
           {fans.length === 0 ? (
@@ -767,6 +966,11 @@ export default function Dashboard() {
               <table className="hidden sm:table w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted)]">
+                    <th className="pl-4 pr-1 py-3 w-8">
+                      <input type="checkbox" checked={bulkSelected.size === filtered.length && filtered.length > 0}
+                        onChange={toggleSelectAll}
+                        className="h-3.5 w-3.5 rounded border-[var(--border)] accent-brand-500 cursor-pointer" />
+                    </th>
                     <th className="px-4 py-3 font-medium cursor-pointer hover:text-white transition select-none" onClick={() => toggleSort("name")}>
                       Fan <span className="text-xs ml-1 opacity-50">{sortIcon("name")}</span>
                     </th>
@@ -790,14 +994,19 @@ export default function Dashboard() {
                     const cs = churnScore(fan);
                     const cl = churnLabel(cs);
                     return (
-                    <tr key={fan.id} onClick={() => setSelected(fan)} className="cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5">
-                      <td className="px-4 py-3 font-medium">{fan.name}</td>
-                      <td className="px-4 py-3">
+                    <tr key={fan.id} className={`cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5 ${bulkSelected.has(fan.id) ? "bg-brand-500/5" : ""}`}>
+                      <td className="pl-4 pr-1 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={bulkSelected.has(fan.id)}
+                          onChange={() => toggleBulkSelect(fan.id)}
+                          className="h-3.5 w-3.5 rounded border-[var(--border)] accent-brand-500 cursor-pointer" />
+                      </td>
+                      <td className="px-4 py-3 font-medium" onClick={() => setSelected(fan)}>{fan.name}</td>
+                      <td className="px-4 py-3" onClick={() => setSelected(fan)}>
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
                       </td>
-                      <td className="px-4 py-3">${(fan.total_spent || 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 hidden md:table-cell">{daysAgo(fan.last_message_at)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={() => setSelected(fan)}>${(fan.total_spent || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 hidden md:table-cell" onClick={() => setSelected(fan)}>{daysAgo(fan.last_message_at)}</td>
+                      <td className="px-4 py-3" onClick={() => setSelected(fan)}>
                         <span className={(() => {
                           if (!fan.renewal_date) return "text-[var(--muted)]";
                           const d = Math.floor((new Date(fan.renewal_date).getTime() - Date.now()) / 86400000);
@@ -806,7 +1015,7 @@ export default function Dashboard() {
                           {daysUntil(fan.renewal_date)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
+                      <td className="px-4 py-3 hidden lg:table-cell" onClick={() => setSelected(fan)}>
                         <span className={`text-xs font-medium ${cl.color}`}>{cl.text}</span>
                       </td>
                     </tr>
@@ -854,6 +1063,27 @@ export default function Dashboard() {
                   <p className="text-sm">{selected.notes}</p>
                 </div>
               )}
+              {/* Milestones */}
+              {getMilestones(selected.total_spent || 0).length > 0 && (
+                <div className="rounded-lg bg-white/5 p-4">
+                  <p className="text-xs text-[var(--muted)] mb-1">Milestone</p>
+                  {getMilestones(selected.total_spent || 0).map(m => (
+                    <p key={m.label} className={`font-semibold ${m.color}`}>🏆 {m.label}</p>
+                  ))}
+                </div>
+              )}
+              {/* Churn Score */}
+              <div className="rounded-lg bg-white/5 p-4">
+                <p className="text-xs text-[var(--muted)] mb-1">Churn Risk</p>
+                <div className="flex items-center gap-3">
+                  <p className={`text-lg font-bold ${churnLabel(churnScore(selected)).color}`}>
+                    {churnScore(selected)}/100
+                  </p>
+                  <span className={`text-sm ${churnLabel(churnScore(selected)).color}`}>
+                    {churnLabel(churnScore(selected)).text}
+                  </span>
+                </div>
+              </div>
               {selected.tag === "at-risk" && (
                 <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                   <p className="text-sm font-semibold text-red-300">Action Needed</p>
@@ -861,6 +1091,11 @@ export default function Dashboard() {
                 </div>
               )}
               <div className="flex gap-3 pt-2">
+                <button onClick={() => markMessaged(selected.id, selected.name)} className="flex-1 rounded-lg bg-green-500/20 border border-green-500/30 py-2 text-sm font-medium text-green-300 hover:bg-green-500/30 transition">
+                  ✓ Mark Messaged
+                </button>
+              </div>
+              <div className="flex gap-3">
                 <button onClick={() => openEditModal(selected)} className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-[var(--muted)] hover:text-white hover:border-white/30 transition">
                   Edit Fan
                 </button>
@@ -987,6 +1222,31 @@ export default function Dashboard() {
               <button onClick={handleImportConfirm} disabled={importing}
                 className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
                 {importing ? "Importing..." : `Import ${Math.min(importPreview.length, isPro ? importPreview.length : FREE_FAN_LIMIT - fans.length)} Fans`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue Goal Modal */}
+      {showGoalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowGoalModal(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-sm rounded-xl bg-[var(--card)] border border-[var(--border)] p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4">Set Revenue Goal</h2>
+            <p className="text-sm text-[var(--muted)] mb-4">Set a lifetime revenue target to track your progress.</p>
+            <div className="relative mb-4">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">$</span>
+              <input type="number" value={goalInput} onChange={(e) => setGoalInput(e.target.value)}
+                placeholder="e.g. 10000"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-7 pr-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
+                min="1" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowGoalModal(false)} className="flex-1 rounded-lg border border-[var(--border)] py-2.5 text-sm font-medium text-[var(--muted)] hover:text-white transition">Cancel</button>
+              <button onClick={() => saveRevenueGoal(goalInput)} disabled={!goalInput || parseFloat(goalInput) <= 0}
+                className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
+                Save Goal
               </button>
             </div>
           </div>
