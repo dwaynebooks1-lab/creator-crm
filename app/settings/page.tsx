@@ -162,9 +162,25 @@ export default function Settings() {
               </button>
             )}
             {plan === "pro" && (
-              <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-3 py-1 text-sm font-medium text-brand-400">
-                Active
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-3 py-1 text-sm font-medium text-brand-400">
+                  Active
+                </span>
+                <button
+                  onClick={async () => {
+                    const res = await fetch("/api/portal", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ userId: user?.id }),
+                    });
+                    const data = await res.json();
+                    if (data.url) window.location.href = data.url;
+                  }}
+                  className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition"
+                >
+                  Manage Subscription
+                </button>
+              </div>
             )}
           </div>
         </div>

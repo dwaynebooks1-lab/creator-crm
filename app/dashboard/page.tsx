@@ -128,6 +128,16 @@ export default function Dashboard() {
       } else {
         await supabase.from("creators").insert({ id: u.id, email: u.email, name: u.user_metadata?.name || null });
         setCreator({ id: u.id, plan: "free" });
+
+        // Seed demo fans for new users
+        const today = new Date();
+        const demoFans = [
+          { creator_id: u.id, name: "Alex T. (demo)", tag: "whale", total_spent: 2340, renewal_date: new Date(today.getTime() + 12 * 86400000).toISOString(), notes: "Top tipper. Loves exclusive content. Demo fan — delete anytime." },
+          { creator_id: u.id, name: "Sam K. (demo)", tag: "vip", total_spent: 890, renewal_date: new Date(today.getTime() + 5 * 86400000).toISOString(), notes: "Loyal subscriber. Demo fan — delete anytime." },
+          { creator_id: u.id, name: "Jordan P. (demo)", tag: "at-risk", total_spent: 60, renewal_date: new Date(today.getTime() + 1 * 86400000).toISOString(), notes: "No engagement in 10 days. Renewal tomorrow! Demo fan — delete anytime." },
+          { creator_id: u.id, name: "Riley N. (demo)", tag: "new", total_spent: 15, renewal_date: new Date(today.getTime() + 28 * 86400000).toISOString(), notes: "Just subscribed. Demo fan — delete anytime." },
+        ];
+        await supabase.from("fans").insert(demoFans);
       }
 
       setLoading(false);
