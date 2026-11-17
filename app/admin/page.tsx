@@ -45,7 +45,10 @@ export default function AdminDashboard() {
       });
 
       if (res.status === 403) {
-        setError("Access denied. Admin only.");
+        const errData = await res.json();
+        setError(errData.hint === "ADMIN_EMAIL env var not set"
+          ? "ADMIN_EMAIL is not set on Vercel. Add it in Settings → Environment Variables and redeploy."
+          : "Access denied. Admin only.");
         setLoading(false);
         return;
       }

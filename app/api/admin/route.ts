@@ -21,8 +21,11 @@ export async function GET(req: NextRequest) {
   );
 
   const { data: { user } } = await userClient.auth.getUser(token);
-  if (!user || user.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user || !ADMIN_EMAIL || user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    return NextResponse.json(
+      { error: "Forbidden", hint: !ADMIN_EMAIL ? "ADMIN_EMAIL env var not set" : "Email mismatch" },
+      { status: 403 }
+    );
   }
 
   const admin = getSupabaseAdmin();
