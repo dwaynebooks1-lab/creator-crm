@@ -84,10 +84,15 @@ export default function Login() {
             {loading ? "Logging in..." : "Log In"}
           </button>
 
-          <p className="text-center text-sm text-[var(--muted)]">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-brand-400 hover:underline">Sign up free</Link>
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-sm text-[var(--muted)]">
+              <Link href="/forgot-password" className="text-brand-400 hover:underline">Forgot your password?</Link>
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="text-brand-400 hover:underline">Sign up free</Link>
+            </p>
+          </div>
         </form>
       </div>
     </div>
