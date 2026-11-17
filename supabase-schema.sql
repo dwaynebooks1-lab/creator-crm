@@ -46,3 +46,11 @@ create policy "Creators can delete own fans"
 create index if not exists idx_fans_creator on fans(creator_id);
 create index if not exists idx_fans_tag on fans(creator_id, tag);
 create index if not exists idx_fans_renewal on fans(creator_id, renewal_date);
+
+-- Announcements (admin broadcasts to all users)
+create table if not exists announcements (
+  id uuid primary key default gen_random_uuid(),
+  message text not null,
+  active boolean default true,
+  created_at timestamptz default now()
+);

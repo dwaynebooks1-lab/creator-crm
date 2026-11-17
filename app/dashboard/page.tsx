@@ -343,6 +343,9 @@ export default function Dashboard() {
     );
   }
 
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
+
   const totalRevenue = fans.reduce((s, f) => s + (f.total_spent || 0), 0);
   const atRisk = fans.filter((f) => f.tag === "at-risk").length;
   const urgentRenewals = fans.filter((f) => {
@@ -351,6 +354,91 @@ export default function Dashboard() {
     return d >= 0 && d <= 3;
   }).length;
   const avgSpend = fans.length > 0 ? totalRevenue / fans.length : 0;
+
+  // Churn risk score (0-100)
+  function churnScore(fan: Fan): number {
+    let score = 0;
+    // Last message recency
+    if (fan.last_message_at) {
+      const daysSince = Math.floor((Date.now() - new Date(fan.last_message_at).getTime()) / 86400000);
+      if (daysSince > 14) score += 35;
+      else if (daysSince > 7) score += 25;
+      else if (daysSince > 3) score += 10;
+    } else { score += 20; }
+    // Tag
+    if (fan.tag === "at-risk") score += 30;
+    else if (fan.tag === "new") score += 10;
+    // Spending
+    if (fan.total_spent < 20) score += 15;
+    else if (fan.total_spent < 50) score += 5;
+    // Renewal urgency
+    if (fan.renewal_date) {
+      const daysUntilRenewal = Math.floor((new Date(fan.renewal_date).getTime() - Date.now()) / 86400000);
+      if (daysUntilRenewal <= 1) score += 20;
+      else if (daysUntilRenewal <= 3) score += 10;
+    }
+    return Math.min(100, score);
+  }
+
+  function churnLabel(score: number): { text: string; color: string } {
+    if (score >= 60) return { text: "High Risk", color: "text-red-400" };
+    if (score >= 35) return { text: "Medium", color: "text-amber-400" };
+    return { text: "Low Risk", color: "text-green-400" };
+  }
+
+  // Action items — fans that need attention now
+  const actionItems = useMemo(() => {
+    const items: { fan: Fan; reason: string; message: string; priority: number }[] = [];
+    fans.forEach((f) => {
+      // Renewal within 3 days
+      if (f.renewal_date) {
+        const d = Math.floor((new Date(f.renewal_date).getTime() - Date.now()) / 86400000);
+        if (d >= 0 && d <= 1) {
+          items.push({ fan: f, reason: "Renews tomorrow!", message: `Hey ${f.name.split(" ")[0]}! Just wanted to check in and see how you're doing. I've got some amazing content coming soon and I'd love for you to stick around! 💕`, priority: 1 });
+        } else if (d > 1 && d <= 3) {
+          items.push({ fan: f, reason: `Renews in ${d} days`, message: `Hi ${f.name.split(" ")[0]}! Your renewal is coming up soon. I appreciate you so much! Is there anything special you'd like to see? Let me know 😊`, priority: 2 });
+        }
+      }
+      // At-risk fans
+      if (f.tag === "at-risk" && !items.find(i => i.fan.id === f.id)) {
+        items.push({ fan: f, reason: "At risk of leaving", message: `Hey ${f.name.split(" ")[0]}! I noticed we haven't chatted in a while. I miss talking to you! I've got something special coming up that I think you'll love 💖`, priority: 3 });
+      }
+      // Inactive fans (no message in 7+ days)
+      if (f.last_message_at) {
+        const daysSince = Math.floor((Date.now() - new Date(f.last_message_at).getTime()) / 86400000);
+        if (daysSince >= 7 && !items.find(i => i.fan.id === f.id)) {
+          items.push({ fan: f, reason: `No contact in ${daysSince}d`, message: `Hi ${f.name.split(" ")[0]}! It's been a minute since we last chatted. How are you? I'd love to catch up! 😊`, priority: 4 });
+        }
+      }
+      // Whales that haven't been messaged recently
+      if (f.tag === "whale" && f.last_message_at) {
+        const daysSince = Math.floor((Date.now() - new Date(f.last_message_at).getTime()) / 86400000);
+        if (daysSince >= 3 && !items.find(i => i.fan.id === f.id)) {
+          items.push({ fan: f, reason: "VIP — keep engaged", message: `Hey ${f.name.split(" ")[0]}! You're one of my absolute favorites. I wanted to send you something exclusive just for you. Check your DMs tonight 😉💕`, priority: 5 });
+        }
+      }
+    });
+    return items.sort((a, b) => a.priority - b.priority).slice(0, 8);
+  }, [fans]);
+
+  const revenueAtRisk = fans.filter(f => churnScore(f) >= 60).reduce((s, f) => s + (f.total_spent || 0), 0);
+
+  function copyMessage(id: string, msg: string) {
+    navigator.clipboard.writeText(msg);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(""), 2000);
+  }
+
+  const MESSAGE_TEMPLATES = [
+    { id: "welcome", cat: "Welcome", title: "New Subscriber Welcome", msg: "Hey! Welcome to my page! 🎉 I'm so happy you're here. Feel free to DM me anytime — I love getting to know my subscribers. Any special requests? I'm all ears! 💕" },
+    { id: "renewal", cat: "Retention", title: "Renewal Reminder", msg: "Hey babe! Just wanted to let you know your renewal is coming up soon. I've got some amazing new content dropping this week that I think you'll LOVE. Can't wait for you to see it! 😘" },
+    { id: "winback", cat: "Win-back", title: "Win Back Lapsed Fan", msg: "Hey! I noticed you've been away for a bit and I just wanted to say I miss you! 💔 I've been posting a lot of new content and I think you'd really enjoy it. Come back and check it out? 😊" },
+    { id: "whale", cat: "VIP", title: "Whale Appreciation", msg: "I just wanted to take a moment to tell you how much I appreciate your support. You're one of my top supporters and it means the world to me! 💖 Is there anything special you'd like? You deserve it! ✨" },
+    { id: "inactive", cat: "Re-engage", title: "Re-engage Inactive Fan", msg: "Hey! It's been a while since we last chatted and I wanted to check in on you. How are you doing? I've been working on some exciting new stuff and would love to hear what you think! 😊" },
+    { id: "upsell", cat: "Upsell", title: "Custom Content Offer", msg: "Hey! I'm doing something special this week — custom content for my favorite subscribers. Since you're one of my most loyal fans, I wanted to offer it to you first before anyone else. Interested? 💫" },
+    { id: "thankyou", cat: "Appreciation", title: "Thank You / Milestone", msg: "I just wanted to say THANK YOU! 🙏 Your support means everything to me. Because of fans like you, I get to do what I love every day. You're amazing and I appreciate you so much! 💖" },
+    { id: "checkin", cat: "General", title: "Casual Check-in", msg: "Hey! Just thinking about you and wanted to say hi! 😊 How's your day going? Anything exciting happening? I love hearing from you!" },
+  ];
 
   return (
     <div className="min-h-screen pb-20">
@@ -409,7 +497,7 @@ export default function Dashboard() {
               </div>
             </div>
             <button onClick={handleUpgrade} className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap">
-              Upgrade for Unlimited — $49/mo
+              Upgrade for Unlimited — $29/mo
             </button>
           </div>
         )}
@@ -448,6 +536,78 @@ export default function Dashboard() {
           <StatCard label="At Risk" value={String(atRisk)} sub="need attention" accent={atRisk > 0 ? "text-red-400" : ""} />
           <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
         </div>
+
+        {/* Action Center */}
+        {actionItems.length > 0 && (
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⚡</span>
+                <h3 className="text-sm font-semibold">Action Center — {actionItems.length} fan{actionItems.length !== 1 ? "s" : ""} need attention</h3>
+              </div>
+              <button onClick={() => setShowTemplates(true)} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
+                Message Templates
+              </button>
+            </div>
+            <div className="space-y-2">
+              {actionItems.map((item) => {
+                const cs = churnScore(item.fan);
+                const cl = churnLabel(cs);
+                return (
+                  <div key={item.fan.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`hidden sm:flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${TAG_COLORS[item.fan.tag]}`}>
+                        {item.fan.name[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{item.fan.name}</p>
+                          <span className={`text-[10px] ${cl.color}`}>{cl.text}</span>
+                        </div>
+                        <p className="text-xs text-amber-400">{item.reason}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => copyMessage(item.fan.id, item.message)}
+                      className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${copiedId === item.fan.id ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-brand-500 text-white hover:bg-brand-600"}`}>
+                      {copiedId === item.fan.id ? "Copied!" : "Copy Message"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {revenueAtRisk > 0 && (
+              <p className="mt-3 text-xs text-red-400">⚠ ${revenueAtRisk.toLocaleString()} in revenue from high-risk fans</p>
+            )}
+          </div>
+        )}
+
+        {/* Retention Stats */}
+        {fans.length >= 3 && (
+          <div className="mb-6 grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-xs text-[var(--muted)] mb-1">Fans at Risk</p>
+              <p className={`text-xl font-bold ${fans.filter(f => churnScore(f) >= 60).length > 0 ? "text-red-400" : "text-green-400"}`}>
+                {fans.filter(f => churnScore(f) >= 60).length}
+              </p>
+              <p className="text-xs text-[var(--muted)]">churn score 60+</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-xs text-[var(--muted)] mb-1">Revenue at Risk</p>
+              <p className="text-xl font-bold text-red-400">${revenueAtRisk.toLocaleString()}</p>
+              <p className="text-xs text-[var(--muted)]">from high-risk fans</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-xs text-[var(--muted)] mb-1">Healthy Fans</p>
+              <p className="text-xl font-bold text-green-400">{fans.filter(f => churnScore(f) < 35).length}</p>
+              <p className="text-xs text-[var(--muted)]">low churn risk</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-xs text-[var(--muted)] mb-1">Retention Rate</p>
+              <p className="text-xl font-bold">{fans.length > 0 ? Math.round((fans.filter(f => churnScore(f) < 60).length / fans.length) * 100) : 100}%</p>
+              <p className="text-xs text-[var(--muted)]">fans below risk threshold</p>
+            </div>
+          </div>
+        )}
 
         {/* Insights */}
         {fans.length >= 3 && (
@@ -584,18 +744,24 @@ export default function Dashboard() {
             <>
               {/* Mobile Card View */}
               <div className="sm:hidden divide-y divide-[var(--border)]">
-                {filtered.map((fan) => (
+                {filtered.map((fan) => {
+                  const cl = churnLabel(churnScore(fan));
+                  return (
                   <div key={fan.id} onClick={() => setSelected(fan)} className="cursor-pointer p-4 transition hover:bg-white/5 active:bg-white/10">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{fan.name}</span>
-                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] ${cl.color}`}>{cl.text}</span>
+                        <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-[var(--muted)]">
                       <span>${(fan.total_spent || 0).toLocaleString()}</span>
                       <span>Renewal: {daysUntil(fan.renewal_date)}</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               {/* Desktop Table */}
               <table className="hidden sm:table w-full text-left text-sm">
@@ -616,10 +782,14 @@ export default function Dashboard() {
                     <th className="px-4 py-3 font-medium cursor-pointer hover:text-white transition select-none" onClick={() => toggleSort("renewal_date")}>
                       Renewal <span className="text-xs ml-1 opacity-50">{sortIcon("renewal_date")}</span>
                     </th>
+                    <th className="px-4 py-3 font-medium hidden lg:table-cell">Risk</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((fan) => (
+                  {filtered.map((fan) => {
+                    const cs = churnScore(fan);
+                    const cl = churnLabel(cs);
+                    return (
                     <tr key={fan.id} onClick={() => setSelected(fan)} className="cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5">
                       <td className="px-4 py-3 font-medium">{fan.name}</td>
                       <td className="px-4 py-3">
@@ -636,8 +806,12 @@ export default function Dashboard() {
                           {daysUntil(fan.renewal_date)}
                         </span>
                       </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className={`text-xs font-medium ${cl.color}`}>{cl.text}</span>
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </>
@@ -814,6 +988,35 @@ export default function Dashboard() {
                 className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
                 {importing ? "Importing..." : `Import ${Math.min(importPreview.length, isPro ? importPreview.length : FREE_FAN_LIMIT - fans.length)} Fans`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Templates Modal */}
+      {showTemplates && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowTemplates(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-xl bg-[var(--card)] border border-[var(--border)] p-6" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowTemplates(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
+            <h2 className="text-xl font-bold mb-1">Message Templates</h2>
+            <p className="text-sm text-[var(--muted)] mb-4">Ready-to-use messages. Click to copy, then paste into your DMs.</p>
+            <div className="space-y-3">
+              {MESSAGE_TEMPLATES.map((t) => (
+                <div key={t.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{t.title}</span>
+                      <span className="rounded-full bg-white/5 border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted)]">{t.cat}</span>
+                    </div>
+                    <button onClick={() => copyMessage(t.id, t.msg)}
+                      className={`shrink-0 rounded px-2.5 py-1 text-xs font-medium transition ${copiedId === t.id ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-brand-500/20 text-brand-400 border border-brand-500/30 hover:bg-brand-500/30"}`}>
+                      {copiedId === t.id ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">{t.msg}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
