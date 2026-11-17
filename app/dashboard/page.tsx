@@ -110,6 +110,8 @@ export default function Dashboard() {
   const [revenueGoal, setRevenueGoal] = useState<number | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalInput, setGoalInput] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -406,9 +408,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [copiedId, setCopiedId] = useState("");
 
   const totalRevenue = fans.reduce((s, f) => s + (f.total_spent || 0), 0);
   const atRisk = fans.filter((f) => f.tag === "at-risk").length;
