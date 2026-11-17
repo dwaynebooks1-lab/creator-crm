@@ -398,17 +398,6 @@ export default function Dashboard() {
     if (data.url) window.location.href = data.url;
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-          <p className="text-[var(--muted)]">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   const totalRevenue = fans.reduce((s, f) => s + (f.total_spent || 0), 0);
   const atRisk = fans.filter((f) => f.tag === "at-risk").length;
   const urgentRenewals = fans.filter((f) => {
@@ -418,23 +407,18 @@ export default function Dashboard() {
   }).length;
   const avgSpend = fans.length > 0 ? totalRevenue / fans.length : 0;
 
-  // Churn risk score (0-100)
   function churnScore(fan: Fan): number {
     let score = 0;
-    // Last message recency
     if (fan.last_message_at) {
       const daysSince = Math.floor((Date.now() - new Date(fan.last_message_at).getTime()) / 86400000);
       if (daysSince > 14) score += 35;
       else if (daysSince > 7) score += 25;
       else if (daysSince > 3) score += 10;
     } else { score += 20; }
-    // Tag
     if (fan.tag === "at-risk") score += 30;
     else if (fan.tag === "new") score += 10;
-    // Spending
     if (fan.total_spent < 20) score += 15;
     else if (fan.total_spent < 50) score += 5;
-    // Renewal urgency
     if (fan.renewal_date) {
       const daysUntilRenewal = Math.floor((new Date(fan.renewal_date).getTime() - Date.now()) / 86400000);
       if (daysUntilRenewal <= 1) score += 20;
@@ -449,35 +433,30 @@ export default function Dashboard() {
     return { text: "Low Risk", color: "text-green-400" };
   }
 
-  // Action items — fans that need attention now
   const actionItems = useMemo(() => {
     const items: { fan: Fan; reason: string; message: string; priority: number }[] = [];
     fans.forEach((f) => {
-      // Renewal within 3 days
       if (f.renewal_date) {
         const d = Math.floor((new Date(f.renewal_date).getTime() - Date.now()) / 86400000);
         if (d >= 0 && d <= 1) {
-          items.push({ fan: f, reason: "Renews tomorrow!", message: `Hey ${f.name.split(" ")[0]}! Just wanted to check in and see how you're doing. I've got some amazing content coming soon and I'd love for you to stick around! 💕`, priority: 1 });
+          items.push({ fan: f, reason: "Renews tomorrow!", message: `Hey ${f.name.split(" ")[0]}! Just wanted to check in and see how you're doing. I've got some amazing content coming soon and I'd love for you to stick around!`, priority: 1 });
         } else if (d > 1 && d <= 3) {
-          items.push({ fan: f, reason: `Renews in ${d} days`, message: `Hi ${f.name.split(" ")[0]}! Your renewal is coming up soon. I appreciate you so much! Is there anything special you'd like to see? Let me know 😊`, priority: 2 });
+          items.push({ fan: f, reason: `Renews in ${d} days`, message: `Hi ${f.name.split(" ")[0]}! Your renewal is coming up soon. I appreciate you so much! Is there anything special you'd like to see? Let me know`, priority: 2 });
         }
       }
-      // At-risk fans
       if (f.tag === "at-risk" && !items.find(i => i.fan.id === f.id)) {
-        items.push({ fan: f, reason: "At risk of leaving", message: `Hey ${f.name.split(" ")[0]}! I noticed we haven't chatted in a while. I miss talking to you! I've got something special coming up that I think you'll love 💖`, priority: 3 });
+        items.push({ fan: f, reason: "At risk of leaving", message: `Hey ${f.name.split(" ")[0]}! I noticed we haven't chatted in a while. I miss talking to you! I've got something special coming up that I think you'll love`, priority: 3 });
       }
-      // Inactive fans (no message in 7+ days)
       if (f.last_message_at) {
         const daysSince = Math.floor((Date.now() - new Date(f.last_message_at).getTime()) / 86400000);
         if (daysSince >= 7 && !items.find(i => i.fan.id === f.id)) {
-          items.push({ fan: f, reason: `No contact in ${daysSince}d`, message: `Hi ${f.name.split(" ")[0]}! It's been a minute since we last chatted. How are you? I'd love to catch up! 😊`, priority: 4 });
+          items.push({ fan: f, reason: `No contact in ${daysSince}d`, message: `Hi ${f.name.split(" ")[0]}! It's been a minute since we last chatted. How are you? I'd love to catch up!`, priority: 4 });
         }
       }
-      // Whales that haven't been messaged recently
       if (f.tag === "whale" && f.last_message_at) {
         const daysSince = Math.floor((Date.now() - new Date(f.last_message_at).getTime()) / 86400000);
         if (daysSince >= 3 && !items.find(i => i.fan.id === f.id)) {
-          items.push({ fan: f, reason: "VIP — keep engaged", message: `Hey ${f.name.split(" ")[0]}! You're one of my absolute favorites. I wanted to send you something exclusive just for you. Check your DMs tonight 😉💕`, priority: 5 });
+          items.push({ fan: f, reason: "VIP — keep engaged", message: `Hey ${f.name.split(" ")[0]}! You're one of my absolute favorites. I wanted to send you something exclusive just for you. Check your DMs tonight`, priority: 5 });
         }
       }
     });
@@ -486,24 +465,22 @@ export default function Dashboard() {
 
   const revenueAtRisk = fans.filter(f => churnScore(f) >= 60).reduce((s, f) => s + (f.total_spent || 0), 0);
 
-  // Weekly summary
   const weeklySummary = useMemo(() => {
     const now = Date.now();
     const weekAgo = now - 7 * 86400000;
     const twoWeeksAgo = now - 14 * 86400000;
     const thisWeekFans = fans.filter(f => {
-      const d = new Date((f as Fan & { created_at?: string }).created_at || 0).getTime();
+      const d = new Date(f.created_at || 0).getTime();
       return d >= weekAgo;
     }).length;
     const lastWeekFans = fans.filter(f => {
-      const d = new Date((f as Fan & { created_at?: string }).created_at || 0).getTime();
+      const d = new Date(f.created_at || 0).getTime();
       return d >= twoWeeksAgo && d < weekAgo;
     }).length;
     const messaged7d = fans.filter(f => f.last_message_at && new Date(f.last_message_at).getTime() >= weekAgo).length;
     return { thisWeekFans, lastWeekFans, messaged7d };
   }, [fans]);
 
-  // Fan milestones
   function getMilestones(spent: number): { label: string; color: string }[] {
     const m: { label: string; color: string }[] = [];
     if (spent >= 5000) m.push({ label: "Diamond ($5k+)", color: "text-cyan-300" });
@@ -511,6 +488,17 @@ export default function Dashboard() {
     else if (spent >= 500) m.push({ label: "Silver ($500+)", color: "text-gray-300" });
     else if (spent >= 100) m.push({ label: "Bronze ($100+)", color: "text-amber-600" });
     return m;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="text-[var(--muted)]">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   function copyMessage(id: string, msg: string) {
