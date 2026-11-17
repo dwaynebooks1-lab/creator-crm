@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
@@ -8,6 +8,16 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+interface Fan {
+  id: string;
+  name: string;
+  tag: string;
+  total_spent: number;
+  last_message_at: string | null;
+  renewal_date: string | null;
+  notes: string;
+}
 
 interface Creator {
   id: string;
@@ -20,6 +30,13 @@ interface Creator {
   total_revenue: number;
 }
 
+interface Announcement {
+  id: string;
+  message: string;
+  active: boolean;
+  created_at: string;
+}
+
 interface Stats {
   total_users: number;
   pro_users: number;
@@ -27,45 +44,158 @@ interface Stats {
   total_fans: number;
 }
 
+const TAG_COLORS: Record<string, string> = {
+  whale: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  vip: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  regular: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  new: "bg-green-500/20 text-green-300 border-green-500/30",
+  "at-risk": "bg-red-500/20 text-red-300 border-red-500/30",
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creators, setCreators] = useState<Creator[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [search, setSearch] = useState("");
+  const [token, setToken] = useState("");
+
+  // Fan drawer
+  const [selectedUser, setSelectedUser] = useState<Creator | null>(null);
+  const [fans, setFans] = useState<Fan[]>([]);
+  const [fansLoading, setFansLoading] = useState(false);
+
+  // Modals
+  const [deleteTarget, setDeleteTarget] = useState<Creator | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [planTarget, setPlanTarget] = useState<Creator | null>(null);
+  const [planChanging, setPlanChanging] = useState(false);
+
+  // Announcements
+  const [newAnnouncement, setNewAnnouncement] = useState("");
+  const [announceSaving, setAnnounceSaving] = useState(false);
+
+  // Toast
+  const [toast, setToast] = useState("");
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  }
+
+  const loadData = useCallback(async (accessToken: string) => {
+    const res = await fetch("/api/admin", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (res.status === 403) {
+      const errData = await res.json();
+      setError(errData.hint === "ADMIN_EMAIL env var not set"
+        ? "ADMIN_EMAIL is not set on Vercel."
+        : "Access denied. Admin only.");
+      setLoading(false);
+      return;
+    }
+    if (!res.ok) { setError("Failed to load."); setLoading(false); return; }
+    const data = await res.json();
+    setCreators(data.creators || []);
+    setStats(data.stats);
+    setAnnouncements(data.announcements || []);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.push("/login"); return; }
+      setToken(session.access_token);
+      loadData(session.access_token);
+    });
+  }, [router, loadData]);
 
-      const res = await fetch("/api/admin", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+  async function adminAction(body: Record<string, unknown>) {
+    const res = await fetch("/api/admin", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return res.json();
+  }
 
-      if (res.status === 403) {
-        const errData = await res.json();
-        setError(errData.hint === "ADMIN_EMAIL env var not set"
-          ? "ADMIN_EMAIL is not set on Vercel. Add it in Settings → Environment Variables and redeploy."
-          : "Access denied. Admin only.");
-        setLoading(false);
-        return;
-      }
+  async function handleViewFans(c: Creator) {
+    if (selectedUser?.id === c.id) { setSelectedUser(null); return; }
+    setSelectedUser(c);
+    setFansLoading(true);
+    const data = await adminAction({ action: "get_fans", userId: c.id });
+    setFans(data.fans || []);
+    setFansLoading(false);
+  }
 
-      if (!res.ok) {
-        setError("Failed to load admin data.");
-        setLoading(false);
-        return;
-      }
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await adminAction({ action: "delete_user", userId: deleteTarget.id });
+    setDeleting(false);
+    setDeleteTarget(null);
+    if (selectedUser?.id === deleteTarget.id) setSelectedUser(null);
+    showToast(`Deleted ${deleteTarget.name || deleteTarget.email}`);
+    loadData(token);
+  }
 
-      const data = await res.json();
-      setCreators(data.creators || []);
-      setStats(data.stats);
-      setLoading(false);
-    }
-    load();
-  }, [router]);
+  async function handleChangePlan() {
+    if (!planTarget) return;
+    setPlanChanging(true);
+    const newPlan = planTarget.plan === "pro" ? "free" : "pro";
+    await adminAction({ action: "change_plan", userId: planTarget.id, plan: newPlan });
+    setPlanChanging(false);
+    setPlanTarget(null);
+    showToast(`Changed ${planTarget.name || planTarget.email} to ${newPlan}`);
+    loadData(token);
+  }
+
+  async function handleSaveAnnouncement(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newAnnouncement.trim()) return;
+    setAnnounceSaving(true);
+    await adminAction({ action: "save_announcement", message: newAnnouncement });
+    setAnnounceSaving(false);
+    setNewAnnouncement("");
+    showToast("Announcement published!");
+    loadData(token);
+  }
+
+  async function handleDeleteAnnouncement(id: string) {
+    await adminAction({ action: "delete_announcement", announcementId: id });
+    showToast("Announcement deleted");
+    loadData(token);
+  }
+
+  async function handleToggleAnnouncement(id: string, active: boolean) {
+    await adminAction({ action: "toggle_announcement", announcementId: id, active });
+    showToast(active ? "Announcement activated" : "Announcement hidden");
+    loadData(token);
+  }
+
+  function exportCSV() {
+    const headers = ["Name", "Email", "Plan", "Fans", "Revenue Tracked", "Joined"];
+    const rows = creators.map((c) => [
+      c.name || "",
+      c.email,
+      c.plan,
+      c.fan_count.toString(),
+      c.total_revenue.toString(),
+      c.created_at ? new Date(c.created_at).toLocaleDateString() : "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `creatorcrm-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("CSV exported!");
+  }
 
   const filtered = creators.filter((c) =>
     (c.email?.toLowerCase() || "").includes(search.toLowerCase()) ||
@@ -118,7 +248,7 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
 
         {/* Stats */}
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
             <p className="text-sm text-[var(--muted)] mb-1">Total Users</p>
             <p className="text-3xl font-bold">{stats?.total_users}</p>
@@ -137,7 +267,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Extra stats row */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
             <p className="text-sm text-[var(--muted)] mb-1">Total Fans Tracked</p>
@@ -157,17 +286,87 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Announcements */}
+        <div className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <h2 className="text-lg font-semibold mb-4">Announcements</h2>
+          <form onSubmit={handleSaveAnnouncement} className="flex gap-3 mb-4">
+            <input
+              type="text"
+              value={newAnnouncement}
+              onChange={(e) => setNewAnnouncement(e.target.value)}
+              placeholder="Type an announcement for all users..."
+              className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
+            />
+            <button type="submit" disabled={announceSaving || !newAnnouncement.trim()}
+              className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50 whitespace-nowrap">
+              {announceSaving ? "Sending..." : "Publish"}
+            </button>
+          </form>
+          {announcements.length > 0 ? (
+            <div className="space-y-2">
+              {announcements.map((a) => (
+                <div key={a.id} className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-sm ${a.active ? "border-green-500/30 bg-green-500/5" : "border-[var(--border)] opacity-50"}`}>
+                  <div className="flex-1">
+                    <p>{a.message}</p>
+                    <p className="text-xs text-[var(--muted)] mt-1">{new Date(a.created_at).toLocaleDateString()} — {a.active ? "Active" : "Hidden"}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleToggleAnnouncement(a.id, !a.active)}
+                      className="rounded px-2 py-1 text-xs border border-[var(--border)] text-[var(--muted)] hover:text-white transition">
+                      {a.active ? "Hide" : "Show"}
+                    </button>
+                    <button onClick={() => handleDeleteAnnouncement(a.id)}
+                      className="rounded px-2 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">No announcements yet. Users will see these as a banner on their dashboard.</p>
+          )}
+        </div>
+
+        {/* Activity Log */}
+        <div className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+          <div className="space-y-3">
+            {creators.slice(0, 10).map((c) => (
+              <div key={c.id} className="flex items-center gap-3 text-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold">
+                  {(c.name || c.email)?.[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <span className="font-medium">{c.name || "Anonymous"}</span>
+                  <span className="text-[var(--muted)]"> signed up</span>
+                  {c.plan === "pro" && <span className="text-brand-400"> and upgraded to Pro</span>}
+                </div>
+                <span className="text-xs text-[var(--muted)]">
+                  {c.created_at ? new Date(c.created_at).toLocaleDateString() : ""}
+                </span>
+              </div>
+            ))}
+            {creators.length === 0 && (
+              <p className="text-sm text-[var(--muted)]">No activity yet.</p>
+            )}
+          </div>
+        </div>
+
         {/* Users table */}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
           <div className="border-b border-[var(--border)] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-lg font-semibold">All Users ({filtered.length})</h2>
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-64 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition"
-            />
+            <div className="flex gap-3">
+              <input
+                type="text" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)}
+                className="w-full sm:w-48 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition"
+              />
+              <button onClick={exportCSV}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition whitespace-nowrap">
+                Export CSV
+              </button>
+            </div>
           </div>
 
           {/* Desktop table */}
@@ -178,34 +377,81 @@ export default function AdminDashboard() {
                   <th className="px-4 py-3 font-medium">User</th>
                   <th className="px-4 py-3 font-medium">Plan</th>
                   <th className="px-4 py-3 font-medium text-right">Fans</th>
-                  <th className="px-4 py-3 font-medium text-right">Revenue Tracked</th>
+                  <th className="px-4 py-3 font-medium text-right">Revenue</th>
                   <th className="px-4 py-3 font-medium">Joined</th>
+                  <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-[var(--border)] hover:bg-white/[0.02] transition">
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{c.name || "No name"}</p>
-                      <p className="text-xs text-[var(--muted)]">{c.email}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.plan === "pro" ? (
-                        <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2.5 py-0.5 text-xs font-medium text-brand-400">Pro</span>
-                      ) : (
-                        <span className="rounded-full bg-white/5 border border-[var(--border)] px-2.5 py-0.5 text-xs text-[var(--muted)]">Free</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">{c.fan_count}</td>
-                    <td className="px-4 py-3 text-right">${c.total_revenue.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[var(--muted)]">
-                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
-                    </td>
-                  </tr>
+                  <>
+                    <tr key={c.id} className={`border-b border-[var(--border)] hover:bg-white/[0.02] transition cursor-pointer ${selectedUser?.id === c.id ? "bg-white/[0.03]" : ""}`}
+                      onClick={() => handleViewFans(c)}>
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{c.name || "No name"}</p>
+                        <p className="text-xs text-[var(--muted)]">{c.email}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.plan === "pro" ? (
+                          <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2.5 py-0.5 text-xs font-medium text-brand-400">Pro</span>
+                        ) : (
+                          <span className="rounded-full bg-white/5 border border-[var(--border)] px-2.5 py-0.5 text-xs text-[var(--muted)]">Free</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">{c.fan_count}</td>
+                      <td className="px-4 py-3 text-right">${c.total_revenue.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-[var(--muted)]">
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => setPlanTarget(c)}
+                            className="rounded px-2 py-1 text-xs border border-[var(--border)] text-[var(--muted)] hover:text-white transition">
+                            {c.plan === "pro" ? "Downgrade" : "Upgrade"}
+                          </button>
+                          <button onClick={() => setDeleteTarget(c)}
+                            className="rounded px-2 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition">
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {selectedUser?.id === c.id && (
+                      <tr key={`${c.id}-fans`}>
+                        <td colSpan={6} className="bg-[var(--bg)] border-b border-[var(--border)]">
+                          <div className="p-4">
+                            <h3 className="text-sm font-semibold mb-3">{c.name || c.email}&apos;s Fans ({fans.length})</h3>
+                            {fansLoading ? (
+                              <div className="flex justify-center py-4">
+                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                              </div>
+                            ) : fans.length === 0 ? (
+                              <p className="text-sm text-[var(--muted)] py-2">No fans yet.</p>
+                            ) : (
+                              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                                {fans.map((f) => (
+                                  <div key={f.id} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-medium text-sm">{f.name}</span>
+                                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${TAG_COLORS[f.tag] || TAG_COLORS.new}`}>{f.tag}</span>
+                                    </div>
+                                    <p className="text-xs text-[var(--muted)]">
+                                      ${f.total_spent.toLocaleString()} spent
+                                      {f.notes && ` · ${f.notes.slice(0, 40)}${f.notes.length > 40 ? "..." : ""}`}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-[var(--muted)]">
+                    <td colSpan={6} className="px-4 py-8 text-center text-[var(--muted)]">
                       {search ? "No users match your search" : "No users yet"}
                     </td>
                   </tr>
@@ -217,33 +463,120 @@ export default function AdminDashboard() {
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-[var(--border)]">
             {filtered.map((c) => (
-              <div key={c.id} className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{c.name || "No name"}</p>
-                    <p className="text-xs text-[var(--muted)]">{c.email}</p>
+              <div key={c.id}>
+                <div className="p-4 space-y-2 cursor-pointer" onClick={() => handleViewFans(c)}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{c.name || "No name"}</p>
+                      <p className="text-xs text-[var(--muted)]">{c.email}</p>
+                    </div>
+                    {c.plan === "pro" ? (
+                      <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2.5 py-0.5 text-xs font-medium text-brand-400">Pro</span>
+                    ) : (
+                      <span className="rounded-full bg-white/5 border border-[var(--border)] px-2.5 py-0.5 text-xs text-[var(--muted)]">Free</span>
+                    )}
                   </div>
-                  {c.plan === "pro" ? (
-                    <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2.5 py-0.5 text-xs font-medium text-brand-400">Pro</span>
-                  ) : (
-                    <span className="rounded-full bg-white/5 border border-[var(--border)] px-2.5 py-0.5 text-xs text-[var(--muted)]">Free</span>
-                  )}
+                  <div className="flex gap-4 text-xs text-[var(--muted)]">
+                    <span>{c.fan_count} fans</span>
+                    <span>${c.total_revenue.toLocaleString()}</span>
+                    <span>{c.created_at ? new Date(c.created_at).toLocaleDateString() : ""}</span>
+                  </div>
+                  <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => setPlanTarget(c)}
+                      className="rounded px-2 py-1 text-xs border border-[var(--border)] text-[var(--muted)] hover:text-white transition">
+                      {c.plan === "pro" ? "Downgrade" : "Upgrade"}
+                    </button>
+                    <button onClick={() => setDeleteTarget(c)}
+                      className="rounded px-2 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition">
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-4 text-xs text-[var(--muted)]">
-                  <span>{c.fan_count} fans</span>
-                  <span>${c.total_revenue.toLocaleString()} tracked</span>
-                  <span>Joined {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}</span>
-                </div>
+                {selectedUser?.id === c.id && (
+                  <div className="bg-[var(--bg)] border-t border-[var(--border)] p-4">
+                    <h3 className="text-sm font-semibold mb-3">{c.name || c.email}&apos;s Fans ({fans.length})</h3>
+                    {fansLoading ? (
+                      <div className="flex justify-center py-4">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                      </div>
+                    ) : fans.length === 0 ? (
+                      <p className="text-sm text-[var(--muted)]">No fans yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {fans.map((f) => (
+                          <div key={f.id} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-sm">{f.name}</span>
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] ${TAG_COLORS[f.tag] || TAG_COLORS.new}`}>{f.tag}</span>
+                            </div>
+                            <p className="text-xs text-[var(--muted)]">${f.total_spent.toLocaleString()} spent</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
-            {filtered.length === 0 && (
-              <div className="p-8 text-center text-[var(--muted)]">
-                {search ? "No users match your search" : "No users yet"}
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setDeleteTarget(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Delete User</h3>
+            <p className="text-sm text-[var(--muted)] mb-1">
+              Are you sure you want to delete <strong>{deleteTarget.name || deleteTarget.email}</strong>?
+            </p>
+            <p className="text-sm text-red-400 mb-4">
+              This will permanently delete their account, all their fans, and all their data. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 rounded-lg border border-[var(--border)] py-2.5 text-sm text-[var(--muted)] hover:text-white transition">
+                Cancel
+              </button>
+              <button onClick={handleDeleteUser} disabled={deleting}
+                className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 transition disabled:opacity-50">
+                {deleting ? "Deleting..." : "Delete User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Change Modal */}
+      {planTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setPlanTarget(null)}>
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">
+              {planTarget.plan === "pro" ? "Downgrade" : "Upgrade"} User
+            </h3>
+            <p className="text-sm text-[var(--muted)] mb-4">
+              {planTarget.plan === "pro"
+                ? `Downgrade ${planTarget.name || planTarget.email} from Pro to Free? They'll lose access to Pro features.`
+                : `Upgrade ${planTarget.name || planTarget.email} from Free to Pro? They'll get unlimited fans and all Pro features.`}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setPlanTarget(null)} className="flex-1 rounded-lg border border-[var(--border)] py-2.5 text-sm text-[var(--muted)] hover:text-white transition">
+                Cancel
+              </button>
+              <button onClick={handleChangePlan} disabled={planChanging}
+                className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
+                {planChanging ? "Changing..." : (planTarget.plan === "pro" ? "Downgrade to Free" : "Upgrade to Pro")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-[slideUp_0.3s_ease] rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm text-green-300 shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

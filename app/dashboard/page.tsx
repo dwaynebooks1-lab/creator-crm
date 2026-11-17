@@ -103,6 +103,8 @@ export default function Dashboard() {
   const [importing, setImporting] = useState(false);
   const [importPreview, setImportPreview] = useState<Array<{ name: string; tag: Tag; total_spent: number; notes: string }>>([]);
 
+  const [announcement, setAnnouncement] = useState("");
+
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
   const atLimit = !isPro && fans.length >= FREE_FAN_LIMIT;
@@ -142,6 +144,15 @@ export default function Dashboard() {
 
       setLoading(false);
       loadFans();
+
+      // Load active announcement
+      const { data: ann } = await supabase
+        .from("announcements")
+        .select("message")
+        .eq("active", true)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (ann?.[0]) setAnnouncement(ann[0].message);
     });
   }, [router, loadFans]);
 
@@ -374,6 +385,18 @@ export default function Dashboard() {
           </div>
         </div>
       </nav>
+
+      {/* Announcement Banner */}
+      {announcement && (
+        <div className="border-b border-brand-500/30 bg-brand-500/10 px-4 py-3">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+            <p className="text-sm text-brand-300">
+              <span className="font-semibold mr-2">Announcement:</span>{announcement}
+            </p>
+            <button onClick={() => setAnnouncement("")} className="text-brand-400 hover:text-white transition text-lg leading-none">&times;</button>
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
         {/* Plan Banner */}
