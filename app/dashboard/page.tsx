@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newFan, setNewFan] = useState({ name: "", tag: "new" as Tag, total_spent: "", renewal_date: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState("");
 
   const loadFans = useCallback(async () => {
     const { data } = await supabase
@@ -84,12 +85,28 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
+    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
       if (!u) {
         router.push("/login");
         return;
       }
       setUser(u);
+
+      // Ensure a creators row exists for this user
+      const { data: existing } = await supabase
+        .from("creators")
+        .select("id")
+        .eq("id", u.id)
+        .single();
+
+      if (!existing) {
+        await supabase.from("creators").insert({
+          id: u.id,
+          email: u.email,
+          name: u.user_metadata?.name || null,
+        });
+      }
+
       setLoading(false);
       loadFans();
     });
@@ -98,6 +115,7 @@ export default function Dashboard() {
   async function handleAddFan() {
     if (!newFan.name.trim()) return;
     setSaving(true);
+    setAddError("");
 
     const { error } = await supabase.from("fans").insert({
       creator_id: user!.id,
@@ -108,11 +126,15 @@ export default function Dashboard() {
       notes: newFan.notes.trim(),
     });
 
-    if (!error) {
-      await loadFans();
-      setNewFan({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "" });
-      setShowAddModal(false);
+    if (error) {
+      setAddError(error.message);
+      setSaving(false);
+      return;
     }
+
+    await loadFans();
+    setNewFan({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "" });
+    setShowAddModal(false);
     setSaving(false);
   }
 
@@ -318,6 +340,11 @@ export default function Dashboard() {
             <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
             <h2 className="text-xl font-bold mb-6">Add New Fan</h2>
             <div className="space-y-4">
+              {addError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                  {addError}
+                </div>
+              )}
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Fan Name</label>
                 <input
