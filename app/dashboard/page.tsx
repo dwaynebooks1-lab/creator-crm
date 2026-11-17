@@ -9,6 +9,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+const FREE_FAN_LIMIT = 25;
+
 type Tag = "whale" | "vip" | "regular" | "new" | "at-risk";
 
 type Fan = {
@@ -19,6 +21,11 @@ type Fan = {
   last_message_at: string | null;
   renewal_date: string | null;
   notes: string;
+};
+
+type Creator = {
+  id: string;
+  plan: "free" | "pro";
 };
 
 const TAG_COLORS: Record<Tag, string> = {
@@ -54,11 +61,11 @@ function daysUntil(iso: string | null) {
   return `${diff} days`;
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
-      <p className="text-sm text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
+      <p className="text-xs sm:text-sm text-[var(--muted)]">{label}</p>
+      <p className={`mt-1 text-xl sm:text-2xl font-bold ${accent || ""}`}>{value}</p>
       {sub && <p className="mt-1 text-xs text-[var(--muted)]">{sub}</p>}
     </div>
   );
@@ -67,14 +74,21 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [creator, setCreator] = useState<Creator | null>(null);
   const [loading, setLoading] = useState(true);
   const [fans, setFans] = useState<Fan[]>([]);
   const [filter, setFilter] = useState<Tag | "all">("all");
   const [selected, setSelected] = useState<Fan | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newFan, setNewFan] = useState({ name: "", tag: "new" as Tag, total_spent: "", renewal_date: "", notes: "" });
+  const [editingFan, setEditingFan] = useState<Fan | null>(null);
+  const [fanForm, setFanForm] = useState({ name: "", tag: "new" as Tag, total_spent: "", renewal_date: "", notes: "" });
   const [saving, setSaving] = useState(false);
-  const [addError, setAddError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<Fan | null>(null);
+
+  const plan = creator?.plan || "free";
+  const isPro = plan === "pro";
+  const atLimit = !isPro && fans.length >= FREE_FAN_LIMIT;
 
   const loadFans = useCallback(async () => {
     const { data } = await supabase
@@ -92,19 +106,21 @@ export default function Dashboard() {
       }
       setUser(u);
 
-      // Ensure a creators row exists for this user
       const { data: existing } = await supabase
         .from("creators")
-        .select("id")
+        .select("id, plan")
         .eq("id", u.id)
         .single();
 
-      if (!existing) {
+      if (existing) {
+        setCreator(existing as Creator);
+      } else {
         await supabase.from("creators").insert({
           id: u.id,
           email: u.email,
           name: u.user_metadata?.name || null,
         });
+        setCreator({ id: u.id, plan: "free" });
       }
 
       setLoading(false);
@@ -112,30 +128,67 @@ export default function Dashboard() {
     });
   }, [router, loadFans]);
 
-  async function handleAddFan() {
-    if (!newFan.name.trim()) return;
-    setSaving(true);
-    setAddError("");
+  function openAddModal() {
+    if (atLimit) return;
+    setEditingFan(null);
+    setFanForm({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "" });
+    setFormError("");
+    setShowAddModal(true);
+  }
 
-    const { error } = await supabase.from("fans").insert({
-      creator_id: user!.id,
-      name: newFan.name.trim(),
-      tag: newFan.tag,
-      total_spent: parseFloat(newFan.total_spent) || 0,
-      renewal_date: newFan.renewal_date || null,
-      notes: newFan.notes.trim(),
+  function openEditModal(fan: Fan) {
+    setEditingFan(fan);
+    setFanForm({
+      name: fan.name,
+      tag: fan.tag,
+      total_spent: String(fan.total_spent || 0),
+      renewal_date: fan.renewal_date ? fan.renewal_date.split("T")[0] : "",
+      notes: fan.notes || "",
     });
+    setFormError("");
+    setSelected(null);
+    setShowAddModal(true);
+  }
+
+  async function handleSaveFan() {
+    if (!fanForm.name.trim()) return;
+    setSaving(true);
+    setFormError("");
+
+    const payload = {
+      name: fanForm.name.trim(),
+      tag: fanForm.tag,
+      total_spent: parseFloat(fanForm.total_spent) || 0,
+      renewal_date: fanForm.renewal_date || null,
+      notes: fanForm.notes.trim(),
+    };
+
+    let error;
+
+    if (editingFan) {
+      ({ error } = await supabase.from("fans").update(payload).eq("id", editingFan.id));
+    } else {
+      ({ error } = await supabase.from("fans").insert({ ...payload, creator_id: user!.id }));
+    }
 
     if (error) {
-      setAddError(error.message);
+      setFormError(error.message);
       setSaving(false);
       return;
     }
 
     await loadFans();
-    setNewFan({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "" });
     setShowAddModal(false);
     setSaving(false);
+  }
+
+  async function handleDeleteFan(fan: Fan) {
+    const { error } = await supabase.from("fans").delete().eq("id", fan.id);
+    if (!error) {
+      await loadFans();
+      setSelected(null);
+      setConfirmDelete(null);
+    }
   }
 
   async function handleLogout() {
@@ -152,7 +205,10 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-[var(--muted)]">Loading...</p>
+        <div className="text-center">
+          <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="text-[var(--muted)]">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -167,23 +223,29 @@ export default function Dashboard() {
   }).length;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20">
       {/* Top Nav */}
-      <nav className="border-b border-[var(--border)] px-4 py-3">
+      <nav className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm px-4 py-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link href="/" className="text-xl font-bold">
             Creator<span className="text-brand-500">CRM</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-[var(--muted)] sm:inline">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="hidden text-sm text-[var(--muted)] md:inline">
               {user?.user_metadata?.name || user?.email}
             </span>
-            <button
-              onClick={handleUpgrade}
-              className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition"
-            >
-              Upgrade to Pro
-            </button>
+            {isPro ? (
+              <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2.5 py-1 text-xs font-medium text-brand-400">
+                Pro
+              </span>
+            ) : (
+              <button
+                onClick={handleUpgrade}
+                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition"
+              >
+                Upgrade to Pro
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition"
@@ -194,27 +256,52 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
+        {/* Plan Banner */}
+        {!isPro && fans.length > 0 && (
+          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-brand-500/30 bg-brand-500/5 p-4">
+            <div>
+              <p className="text-sm font-medium">
+                Free Plan — {fans.length}/{FREE_FAN_LIMIT} fans used
+              </p>
+              <div className="mt-1.5 h-1.5 w-48 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-brand-500 transition-all"
+                  style={{ width: `${Math.min(100, (fans.length / FREE_FAN_LIMIT) * 100)}%` }}
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleUpgrade}
+              className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap"
+            >
+              Upgrade for Unlimited Fans — $49/mo
+            </button>
+          </div>
+        )}
+
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 sm:mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-sm text-[var(--muted)]">Your fan overview</p>
+            <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+            <p className="text-xs sm:text-sm text-[var(--muted)]">Your fan overview</p>
           </div>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+            onClick={openAddModal}
+            disabled={atLimit}
+            className="rounded-lg bg-brand-500 px-3 sm:px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title={atLimit ? `Free plan limit reached (${FREE_FAN_LIMIT} fans). Upgrade to Pro for unlimited.` : undefined}
           >
             + Add Fan
           </button>
         </div>
 
         {/* Stats */}
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard label="Total Fans" value={String(fans.length)} sub="tracked in CRM" />
-          <StatCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} sub="lifetime from tracked fans" />
-          <StatCard label="At Risk" value={String(atRisk)} sub="need attention now" />
-          <StatCard label="Renewals ≤3 days" value={String(urgentRenewals)} sub="message them today" />
+        <div className="mb-6 sm:mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+          <StatCard label="Total Fans" value={String(fans.length)} sub={isPro ? "unlimited" : `of ${FREE_FAN_LIMIT} free`} />
+          <StatCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} sub="lifetime tracked" />
+          <StatCard label="At Risk" value={String(atRisk)} sub="need attention" accent={atRisk > 0 ? "text-red-400" : ""} />
+          <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
         </div>
 
         {/* Filters */}
@@ -229,7 +316,7 @@ export default function Dashboard() {
                   : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--muted)]"
               }`}
             >
-              {t === "all" ? "All Fans" : TAG_LABELS[t]}
+              {t === "all" ? `All (${fans.length})` : `${TAG_LABELS[t]} (${fans.filter(f => f.tag === t).length})`}
             </button>
           ))}
         </div>
@@ -238,54 +325,83 @@ export default function Dashboard() {
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
           {fans.length === 0 ? (
             <div className="p-12 text-center">
+              <div className="mb-4 text-5xl">👥</div>
               <p className="text-lg font-medium mb-2">No fans yet</p>
-              <p className="text-sm text-[var(--muted)] mb-4">Add your first fan to start tracking</p>
+              <p className="text-sm text-[var(--muted)] mb-6">Add your first fan to start tracking revenue, renewals, and engagement.</p>
               <button
-                onClick={() => setShowAddModal(true)}
-                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+                onClick={openAddModal}
+                className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition"
               >
                 + Add Your First Fan
               </button>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-sm text-[var(--muted)]">No fans match this filter.</p>
+            </div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] text-[var(--muted)]">
-                  <th className="px-4 py-3 font-medium">Fan</th>
-                  <th className="px-4 py-3 font-medium">Tag</th>
-                  <th className="px-4 py-3 font-medium hidden sm:table-cell">Spent</th>
-                  <th className="px-4 py-3 font-medium hidden md:table-cell">Last Msg</th>
-                  <th className="px-4 py-3 font-medium">Renewal</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile Card View */}
+              <div className="sm:hidden divide-y divide-[var(--border)]">
                 {filtered.map((fan) => (
-                  <tr
+                  <div
                     key={fan.id}
                     onClick={() => setSelected(fan)}
-                    className="cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5"
+                    className="cursor-pointer p-4 transition hover:bg-white/5"
                   >
-                    <td className="px-4 py-3 font-medium">{fan.name}</td>
-                    <td className="px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{fan.name}</span>
                       <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>
                         {TAG_LABELS[fan.tag]}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">${(fan.total_spent || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 hidden md:table-cell">{daysAgo(fan.last_message_at)}</td>
-                    <td className="px-4 py-3">
-                      <span className={(() => {
-                        if (!fan.renewal_date) return "text-[var(--muted)]";
-                        const d = Math.floor((new Date(fan.renewal_date).getTime() - Date.now()) / 86400000);
-                        return d <= 1 ? "text-red-400 font-semibold" : d <= 3 ? "text-amber-400" : "text-[var(--muted)]";
-                      })()}>
-                        {daysUntil(fan.renewal_date)}
-                      </span>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-[var(--muted)]">
+                      <span>${(fan.total_spent || 0).toLocaleString()}</span>
+                      <span>Renewal: {daysUntil(fan.renewal_date)}</span>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              {/* Desktop Table View */}
+              <table className="hidden sm:table w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-[var(--muted)]">
+                    <th className="px-4 py-3 font-medium">Fan</th>
+                    <th className="px-4 py-3 font-medium">Tag</th>
+                    <th className="px-4 py-3 font-medium">Spent</th>
+                    <th className="px-4 py-3 font-medium hidden md:table-cell">Last Msg</th>
+                    <th className="px-4 py-3 font-medium">Renewal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((fan) => (
+                    <tr
+                      key={fan.id}
+                      onClick={() => setSelected(fan)}
+                      className="cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5"
+                    >
+                      <td className="px-4 py-3 font-medium">{fan.name}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>
+                          {TAG_LABELS[fan.tag]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">${(fan.total_spent || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">{daysAgo(fan.last_message_at)}</td>
+                      <td className="px-4 py-3">
+                        <span className={(() => {
+                          if (!fan.renewal_date) return "text-[var(--muted)]";
+                          const d = Math.floor((new Date(fan.renewal_date).getTime() - Date.now()) / 86400000);
+                          return d <= 1 ? "text-red-400 font-semibold" : d <= 3 ? "text-amber-400" : "text-[var(--muted)]";
+                        })()}>
+                          {daysUntil(fan.renewal_date)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
       </div>
@@ -327,54 +443,95 @@ export default function Dashboard() {
                   </p>
                 </div>
               )}
+              {/* Edit & Delete */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => openEditModal(selected)}
+                  className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-[var(--muted)] hover:text-white hover:border-white/30 transition"
+                >
+                  Edit Fan
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(selected)}
+                  className="flex-1 rounded-lg border border-red-500/30 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Fan Modal */}
+      {/* Delete Confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={() => setConfirmDelete(null)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div className="relative w-full max-w-sm rounded-xl bg-[var(--card)] border border-[var(--border)] p-6 text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-lg font-bold mb-2">Delete {confirmDelete.name}?</p>
+            <p className="text-sm text-[var(--muted)] mb-6">This can&apos;t be undone. All data for this fan will be removed.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 rounded-lg border border-[var(--border)] py-2.5 text-sm font-medium text-[var(--muted)] hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteFan(confirmDelete)}
+                className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 transition"
+              >
+                Delete Fan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Fan Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setShowAddModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowAddModal(false)}>
           <div className="absolute inset-0 bg-black/60" />
           <div className="relative w-full max-w-md rounded-xl bg-[var(--card)] border border-[var(--border)] p-6" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
-            <h2 className="text-xl font-bold mb-6">Add New Fan</h2>
+            <h2 className="text-xl font-bold mb-6">{editingFan ? "Edit Fan" : "Add New Fan"}</h2>
             <div className="space-y-4">
-              {addError && (
+              {formError && (
                 <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-                  {addError}
+                  {formError}
                 </div>
               )}
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Fan Name</label>
                 <input
                   type="text"
-                  value={newFan.name}
-                  onChange={(e) => setNewFan({ ...newFan, name: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                  value={fanForm.name}
+                  onChange={(e) => setFanForm({ ...fanForm, name: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
                   placeholder="e.g. Jake M."
                 />
               </div>
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Tag</label>
                 <select
-                  value={newFan.tag}
-                  onChange={(e) => setNewFan({ ...newFan, tag: e.target.value as Tag })}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                  value={fanForm.tag}
+                  onChange={(e) => setFanForm({ ...fanForm, tag: e.target.value as Tag })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
                 >
                   <option value="new">New</option>
                   <option value="regular">Regular</option>
                   <option value="vip">VIP</option>
                   <option value="whale">Whale</option>
+                  <option value="at-risk">At Risk</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Total Spent ($)</label>
                 <input
                   type="number"
-                  value={newFan.total_spent}
-                  onChange={(e) => setNewFan({ ...newFan, total_spent: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                  value={fanForm.total_spent}
+                  onChange={(e) => setFanForm({ ...fanForm, total_spent: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
                   placeholder="0"
                   min="0"
                   step="0.01"
@@ -384,27 +541,27 @@ export default function Dashboard() {
                 <label className="block text-sm text-[var(--muted)] mb-1">Renewal Date</label>
                 <input
                   type="date"
-                  value={newFan.renewal_date}
-                  onChange={(e) => setNewFan({ ...newFan, renewal_date: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                  value={fanForm.renewal_date}
+                  onChange={(e) => setFanForm({ ...fanForm, renewal_date: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
                 />
               </div>
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Notes</label>
                 <textarea
-                  value={newFan.notes}
-                  onChange={(e) => setNewFan({ ...newFan, notes: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                  value={fanForm.notes}
+                  onChange={(e) => setFanForm({ ...fanForm, notes: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
                   rows={3}
                   placeholder="Preferences, interests, etc."
                 />
               </div>
               <button
-                onClick={handleAddFan}
-                disabled={saving || !newFan.name.trim()}
+                onClick={handleSaveFan}
+                disabled={saving || !fanForm.name.trim()}
                 className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50"
               >
-                {saving ? "Saving..." : "Add Fan"}
+                {saving ? "Saving..." : editingFan ? "Save Changes" : "Add Fan"}
               </button>
             </div>
           </div>
