@@ -34,6 +34,9 @@ export default function Settings() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState({ type: "", text: "" });
 
+  // Referral
+  const [referralCode, setReferralCode] = useState("");
+
   // MFA
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaEnrolling, setMfaEnrolling] = useState(false);
@@ -57,6 +60,16 @@ export default function Settings() {
         setPlan(creator.plan);
         setHasStripeCustomer(!!creator.stripe_customer_id);
       }
+
+      // Set referral code
+      try {
+        let rc = localStorage.getItem("crm_referral_code");
+        if (!rc) {
+          rc = u.id.slice(0, 8);
+          localStorage.setItem("crm_referral_code", rc);
+        }
+        setReferralCode(rc);
+      } catch {}
 
       // Check MFA status
       const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -564,16 +577,17 @@ export default function Settings() {
 
         {/* Share CreatorCRM */}
         <div className="mb-6 rounded-xl border border-brand-500/30 bg-brand-500/5 p-6">
-          <h2 className="text-lg font-semibold mb-1">Share CreatorCRM</h2>
-          <p className="text-xs text-[var(--muted)] mb-4">Know a creator who could use this? Share the link and help them keep more fans.</p>
+          <h2 className="text-lg font-semibold mb-1">Refer a Creator</h2>
+          <p className="text-xs text-[var(--muted)] mb-4">Share your personal referral link. When someone signs up through it, they show up in your referral dashboard.</p>
           <div className="flex gap-3">
             <input
-              type="text" readOnly value="https://creatorcrm.net"
+              type="text" readOnly value={referralCode ? `https://creatorcrm.net/signup?ref=${referralCode}` : "https://creatorcrm.net"}
               className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-[var(--muted)] outline-none"
             />
             <button
               onClick={() => {
-                navigator.clipboard.writeText("https://creatorcrm.net");
+                const link = referralCode ? `https://creatorcrm.net/signup?ref=${referralCode}` : "https://creatorcrm.net";
+                navigator.clipboard.writeText(link);
                 const btn = document.getElementById("copy-share-btn");
                 if (btn) { btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = "Copy Link"; }, 2000); }
               }}
