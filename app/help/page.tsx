@@ -14,7 +14,7 @@ const FAQ = [
   },
   {
     q: "What does Pro include?",
-    a: "Pro ($29/month) gives you unlimited fan tracking, revenue analytics and charts, CSV import and export, retention dashboard, engagement heatmap, spending distribution, leaderboard, smart tag suggestions, personalized growth tips, revenue trend charts, monthly performance comparison, custom message templates, saved fan segments, platform tracking (OnlyFans, Fansly, Patreon, etc.), weekly digest insights, and priority support.",
+    a: "Pro gives you unlimited fan tracking, revenue analytics and charts, CSV import and export, retention dashboard, engagement heatmap, spending distribution, leaderboard, smart tag suggestions, personalized growth tips, revenue trend charts, monthly performance comparison, custom message templates, saved fan segments, platform tracking (OnlyFans, Fansly, Patreon, etc.), AI DM scripts, best time to message, weekly digest insights, and priority support. Pro is $29/month or $249/year (save $99).",
   },
   {
     q: "How does the churn risk score work?",
@@ -95,6 +95,7 @@ export default function Help() {
           <h2 className="text-2xl font-bold mb-6">What&apos;s New</h2>
           <div className="space-y-4">
             {[
+              { date: "Nov 2026", title: "Annual Pricing & Landing Page", desc: "Save $99/year with the new annual plan ($249/year vs $348 monthly). Plus a redesigned landing page with comparison table and better testimonials." },
               { date: "Nov 2026", title: "Platform Tracking & Weekly Digest", desc: "Track which platform each fan comes from (OnlyFans, Fansly, Patreon, Twitch, etc.). Plus a weekly digest API for insights." },
               { date: "Nov 2026", title: "Upgrade Celebration", desc: "New Pro subscribers get a confetti celebration when they upgrade. Because you deserve it!" },
               { date: "Nov 2026", title: "Revenue Trends & Performance", desc: "See your 6-month revenue trend chart and compare this month vs last month across fans, revenue, and engagement." },

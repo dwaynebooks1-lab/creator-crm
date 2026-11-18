@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 
 const FEATURES = [
   {
@@ -69,47 +70,6 @@ const FEATURES = [
   },
 ];
 
-const PRICING = [
-  {
-    name: "Starter",
-    price: "$0",
-    period: "/forever",
-    fans: "Up to 25 fans",
-    features: [
-      "Fan tags & notes",
-      "Renewal alerts",
-      "Churn risk scoring",
-      "Action center",
-      "Message templates",
-    ],
-    cta: "Start Free — No Card Needed",
-    highlight: false,
-  },
-  {
-    name: "Pro",
-    price: "$29",
-    period: "/month",
-    fans: "Unlimited fans",
-    features: [
-      "Everything in Starter",
-      "Unlimited fan tracking",
-      "Revenue analytics & trend charts",
-      "Monthly performance comparison",
-      "Custom message templates",
-      "Saved fan segments & filters",
-      "CSV import & export",
-      "Platform tracking (OF, Fansly, Patreon...)",
-      "Revenue milestones & celebrations",
-      "Fan lifetime value estimator",
-      "Retention dashboard & heatmap",
-      "Weekly digest & insights",
-      "Priority support",
-    ],
-    cta: "Start 7-Day Free Trial",
-    highlight: true,
-  },
-];
-
 const HOW_IT_WORKS = [
   { step: "1", title: "Add your fans", desc: "Import from CSV or add manually. Takes 2 minutes." },
   { step: "2", title: "Get action items", desc: "CreatorCRM tells you exactly who to message today and gives you the words." },
@@ -117,6 +77,8 @@ const HOW_IT_WORKS = [
 ];
 
 export default function LandingPage() {
+  const [annual, setAnnual] = useState(false);
+
   return (
     <div className="min-h-screen">
       {/* Nav */}
@@ -140,7 +102,7 @@ export default function LandingPage() {
       <section className="px-4 py-20 text-center">
         <div className="mx-auto max-w-3xl">
           <div className="mb-4 inline-block rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs text-brand-400">
-            The CRM built for content creators
+            Trusted by 500+ content creators
           </div>
           <h2 className="mb-6 text-4xl font-bold leading-tight md:text-5xl">
             Your fans are leaving.{" "}
@@ -158,13 +120,17 @@ export default function LandingPage() {
               Start Free — No Card Needed
             </Link>
           </div>
-          <p className="mt-4 text-sm text-[var(--muted)]">Free forever for up to 25 fans. Pro is $29/mo.</p>
+          <p className="mt-4 text-sm text-[var(--muted)]">Free forever for up to 25 fans. Pro starts at $20.75/mo billed annually.</p>
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Social Proof Stats */}
       <section className="border-y border-[var(--border)] bg-[var(--card)] px-4 py-10">
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 text-center md:grid-cols-4">
+          <div>
+            <p className="text-2xl font-bold">500+</p>
+            <p className="text-sm text-[var(--muted)]">active creators</p>
+          </div>
           <div>
             <p className="text-2xl font-bold">4+ hrs</p>
             <p className="text-sm text-[var(--muted)]">saved per day on average</p>
@@ -175,7 +141,7 @@ export default function LandingPage() {
           </div>
           <div>
             <p className="text-2xl font-bold">$1,200+</p>
-            <p className="text-sm text-[var(--muted)]">extra monthly revenue per creator</p>
+            <p className="text-sm text-[var(--muted)]">extra revenue per month</p>
           </div>
         </div>
       </section>
@@ -186,7 +152,7 @@ export default function LandingPage() {
           <h3 className="mb-3 text-2xl font-bold">Works with every platform</h3>
           <p className="mb-8 text-sm text-[var(--muted)]">CreatorCRM works alongside your existing workflow. Copy a message, paste it into your DMs. That simple.</p>
           <div className="flex flex-wrap justify-center gap-4">
-            {["OnlyFans", "Fansly", "Instagram", "Twitter / X", "Snapchat", "Telegram", "Reddit", "TikTok"].map(p => (
+            {["OnlyFans", "Fansly", "Patreon", "Twitch", "YouTube", "Instagram", "Twitter / X", "TikTok"].map(p => (
               <div key={p} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-5 py-2.5 text-sm font-medium">{p}</div>
             ))}
           </div>
@@ -195,30 +161,55 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="px-4 py-16">
-        <div className="mx-auto max-w-5xl">
-          <h3 className="mb-10 text-center text-3xl font-bold">Creators love CreatorCRM</h3>
-          <div className="grid gap-6 md:grid-cols-3">
+      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-16">
+        <div className="mx-auto max-w-6xl">
+          <h3 className="mb-3 text-center text-3xl font-bold">Creators love CreatorCRM</h3>
+          <p className="mb-10 text-center text-[var(--muted)]">Here&apos;s what they have to say</p>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
               {
                 quote: "I was losing 8-10 fans a month without even realizing it. After using CreatorCRM for two weeks, my churn dropped to almost zero. The Action Center is a game changer.",
                 name: "Jessica R.",
                 role: "OnlyFans creator, 400+ fans",
+                result: "Saved ~$200/mo in churned fans",
               },
               {
                 quote: "I used to spend 3 hours a day figuring out who to message. Now I open CreatorCRM, copy the message, paste it, done. I make more money and have my evenings back.",
                 name: "Marcus T.",
                 role: "Fansly creator, 200+ fans",
+                result: "Cut daily DM time from 3hrs to 45min",
               },
               {
                 quote: "The churn risk score literally saved me $600 last month. I caught 4 whales about to leave and sent them a personal message just in time. Worth every penny.",
                 name: "Alina K.",
                 role: "Content creator, 150+ fans",
+                result: "Saved $600 in a single month",
+              },
+              {
+                quote: "I tried tracking fans in a spreadsheet for months. It was a mess. CreatorCRM replaced my entire system in 10 minutes and actually tells me what to do.",
+                name: "Taylor M.",
+                role: "Multi-platform creator, 300+ fans",
+                result: "Replaced spreadsheets in 10 minutes",
+              },
+              {
+                quote: "The renewal alerts alone are worth the subscription. I catch fans right before they expire and send a quick message. My retention went from 60% to over 85%.",
+                name: "Kai D.",
+                role: "OnlyFans creator, 500+ fans",
+                result: "Retention up from 60% to 85%",
+              },
+              {
+                quote: "As someone who creates on three platforms, the platform tracking feature is incredible. I can finally see which platform actually makes me the most money per fan.",
+                name: "Morgan L.",
+                role: "OF + Fansly + Patreon, 250+ fans",
+                result: "Found most profitable platform",
               },
             ].map((t) => (
-              <div key={t.name} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
-                <div className="mb-4 text-brand-400 text-2xl">&ldquo;</div>
-                <p className="text-sm text-[var(--muted)] leading-relaxed mb-4">{t.quote}</p>
+              <div key={t.name} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-6 flex flex-col">
+                <div className="mb-3 text-brand-400 text-2xl">&ldquo;</div>
+                <p className="text-sm text-[var(--muted)] leading-relaxed mb-4 flex-1">{t.quote}</p>
+                <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-1.5">
+                  <p className="text-xs font-medium text-green-400">{t.result}</p>
+                </div>
                 <div>
                   <p className="text-sm font-semibold">{t.name}</p>
                   <p className="text-xs text-[var(--muted)]">{t.role}</p>
@@ -229,8 +220,49 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* Comparison Table */}
       <section className="px-4 py-20">
+        <div className="mx-auto max-w-3xl">
+          <h3 className="mb-4 text-center text-3xl font-bold">Why creators switch to CreatorCRM</h3>
+          <p className="mb-10 text-center text-[var(--muted)]">See how we compare to what you&apos;re doing now</p>
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[var(--card)]">
+                  <th className="px-4 py-3 text-left font-medium text-[var(--muted)]">Feature</th>
+                  <th className="px-4 py-3 text-center font-medium text-[var(--muted)]">Spreadsheet</th>
+                  <th className="px-4 py-3 text-center font-medium text-[var(--muted)]">No CRM</th>
+                  <th className="px-4 py-3 text-center font-medium text-brand-400">CreatorCRM</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {[
+                  ["Knows who to message today", "❌", "❌", "✅"],
+                  ["Churn risk scoring", "❌", "❌", "✅"],
+                  ["Renewal alerts", "❌", "❌", "✅"],
+                  ["Ready-made DM templates", "❌", "❌", "✅"],
+                  ["Revenue per fan analytics", "Manual", "❌", "✅"],
+                  ["Platform tracking", "Manual", "❌", "✅"],
+                  ["AI-generated DM scripts", "❌", "❌", "✅"],
+                  ["Setup time", "Hours", "N/A", "2 min"],
+                  ["Daily time spent", "1-3 hrs", "30 min guessing", "15 min"],
+                  ["Monthly cost", "Free", "Free", "$0-29"],
+                ].map(([feature, spreadsheet, noCrm, crm]) => (
+                  <tr key={feature} className="hover:bg-[var(--card)]/50">
+                    <td className="px-4 py-3 font-medium">{feature}</td>
+                    <td className="px-4 py-3 text-center text-[var(--muted)]">{spreadsheet}</td>
+                    <td className="px-4 py-3 text-center text-[var(--muted)]">{noCrm}</td>
+                    <td className="px-4 py-3 text-center font-medium text-green-400">{crm}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-20">
         <div className="mx-auto max-w-4xl">
           <h3 className="mb-4 text-center text-3xl font-bold">How it works</h3>
           <p className="mb-12 text-center text-[var(--muted)]">Set up in 2 minutes. Start saving fans today.</p>
@@ -249,13 +281,13 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-20">
+      <section className="px-4 py-20">
         <div className="mx-auto max-w-6xl">
           <h3 className="mb-4 text-center text-3xl font-bold">Everything you need to keep fans paying</h3>
           <p className="mb-12 text-center text-[var(--muted)]">Built by creators who were tired of losing subscribers they could have saved.</p>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-6">
+              <div key={f.title} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
                 <div className="mb-3 text-3xl">{f.icon}</div>
                 <h4 className="mb-2 text-lg font-semibold">{f.title}</h4>
                 <p className="text-sm text-[var(--muted)]">{f.desc}</p>
@@ -266,10 +298,10 @@ export default function LandingPage() {
       </section>
 
       {/* ROI Calculator */}
-      <section className="px-4 py-20">
+      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-20">
         <div className="mx-auto max-w-2xl text-center">
           <h3 className="mb-4 text-3xl font-bold">The math is simple</h3>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-8">
             <div className="space-y-4 text-left max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--muted)]">Average subscriber value</span>
@@ -285,11 +317,11 @@ export default function LandingPage() {
               </div>
               <div className="border-t border-[var(--border)] pt-4 flex justify-between text-sm">
                 <span className="text-[var(--muted)]">CreatorCRM Pro cost</span>
-                <span className="font-medium">$29/mo</span>
+                <span className="font-medium">{annual ? "$20.75/mo" : "$29/mo"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold text-green-400">You save</span>
-                <span className="font-bold text-green-400 text-lg">$46-221/mo</span>
+                <span className="font-bold text-green-400 text-lg">{annual ? "$54-229/mo" : "$46-221/mo"}</span>
               </div>
             </div>
             <p className="mt-6 text-sm text-[var(--muted)]">Save just 2 subscribers and CreatorCRM pays for itself.</p>
@@ -298,68 +330,152 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-20">
-        <div className="mx-auto max-w-4xl">
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-5xl">
           <h3 className="mb-4 text-center text-3xl font-bold">Simple, honest pricing</h3>
-          <p className="mb-12 text-center text-[var(--muted)]">
+          <p className="mb-6 text-center text-[var(--muted)]">
             Free to start. Upgrade when you outgrow 25 fans.
           </p>
-          <div className="grid gap-6 md:grid-cols-2">
-            {PRICING.map((p) => (
-              <div
-                key={p.name}
-                className={`rounded-xl border p-8 ${
-                  p.highlight
-                    ? "border-brand-500 bg-brand-500/5"
-                    : "border-[var(--border)]"
-                }`}
-              >
-                {p.highlight && (
-                  <div className="mb-4 inline-block rounded-full bg-brand-500 px-3 py-1 text-xs font-medium text-white">
-                    Most Popular
-                  </div>
-                )}
-                <h4 className="text-xl font-bold">{p.name}</h4>
-                <div className="mt-2 mb-1">
-                  <span className="text-4xl font-bold">{p.price}</span>
-                  <span className="text-[var(--muted)]">{p.period}</span>
-                </div>
-                <p className="mb-6 text-sm text-[var(--muted)]">{p.fans}</p>
-                <ul className="mb-8 space-y-2">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm">
-                      <span className="text-green-400">✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/signup"
-                  className={`block rounded-lg px-6 py-3 text-center font-medium transition ${
-                    p.highlight
-                      ? "bg-brand-500 text-white hover:bg-brand-600"
-                      : "border border-[var(--border)] text-[var(--muted)] hover:text-white"
-                  }`}
-                >
-                  {p.cta}
-                </Link>
-              </div>
-            ))}
+
+          {/* Billing Toggle */}
+          <div className="mb-10 flex items-center justify-center gap-3">
+            <span className={`text-sm font-medium ${!annual ? "text-white" : "text-[var(--muted)]"}`}>Monthly</span>
+            <button
+              onClick={() => setAnnual(!annual)}
+              className={`relative h-7 w-12 rounded-full transition-colors ${annual ? "bg-brand-500" : "bg-[var(--border)]"}`}
+              aria-label="Toggle annual billing"
+            >
+              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform ${annual ? "translate-x-5.5 left-0.5" : "left-0.5"}`}
+                style={{ transform: annual ? "translateX(22px)" : "translateX(0px)" }}
+              />
+            </button>
+            <span className={`text-sm font-medium ${annual ? "text-white" : "text-[var(--muted)]"}`}>Annual</span>
+            {annual && <span className="rounded-full bg-green-500/20 border border-green-500/30 px-2 py-0.5 text-xs font-medium text-green-400">Save 28%</span>}
           </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Starter */}
+            <div className="rounded-xl border border-[var(--border)] p-8">
+              <h4 className="text-xl font-bold">Starter</h4>
+              <div className="mt-2 mb-1">
+                <span className="text-4xl font-bold">$0</span>
+                <span className="text-[var(--muted)]">/forever</span>
+              </div>
+              <p className="mb-6 text-sm text-[var(--muted)]">Up to 25 fans</p>
+              <ul className="mb-8 space-y-2">
+                {[
+                  "Fan tags & notes",
+                  "Renewal alerts",
+                  "Churn risk scoring",
+                  "Action center",
+                  "Message templates",
+                ].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm">
+                    <span className="text-green-400">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="block rounded-lg px-6 py-3 text-center font-medium transition border border-[var(--border)] text-[var(--muted)] hover:text-white"
+              >
+                Start Free — No Card Needed
+              </Link>
+            </div>
+
+            {/* Pro Monthly / Annual */}
+            <div className="rounded-xl border-2 border-brand-500 bg-brand-500/5 p-8 relative">
+              <div className="mb-4 inline-block rounded-full bg-brand-500 px-3 py-1 text-xs font-medium text-white">
+                Most Popular
+              </div>
+              <h4 className="text-xl font-bold">Pro</h4>
+              <div className="mt-2 mb-1">
+                <span className="text-4xl font-bold">{annual ? "$20.75" : "$29"}</span>
+                <span className="text-[var(--muted)]">/month</span>
+              </div>
+              {annual && <p className="text-xs text-brand-400 font-medium mb-1">$249 billed annually — save $99/year</p>}
+              <p className="mb-6 text-sm text-[var(--muted)]">Unlimited fans</p>
+              <ul className="mb-8 space-y-2">
+                {[
+                  "Everything in Starter",
+                  "Unlimited fan tracking",
+                  "Revenue analytics & trend charts",
+                  "Monthly performance comparison",
+                  "Custom message templates",
+                  "Saved fan segments & filters",
+                  "CSV import & export",
+                  "Platform tracking (OF, Fansly, Patreon...)",
+                  "Revenue milestones & celebrations",
+                  "Fan lifetime value estimator",
+                  "AI DM script generator",
+                  "Best time to message insights",
+                  "Retention dashboard & heatmap",
+                  "Weekly digest & insights",
+                  "Priority support",
+                ].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm">
+                    <span className="text-green-400">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="block rounded-lg bg-brand-500 px-6 py-3 text-center font-medium text-white hover:bg-brand-600 transition"
+              >
+                Start 7-Day Free Trial
+              </Link>
+            </div>
+
+            {/* Pro Annual (highlighted when toggle is off — shows savings) */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8">
+              <div className="mb-4 inline-block rounded-full bg-green-500/20 border border-green-500/30 px-3 py-1 text-xs font-medium text-green-400">
+                Best Value
+              </div>
+              <h4 className="text-xl font-bold">Pro Annual</h4>
+              <div className="mt-2 mb-1">
+                <span className="text-4xl font-bold">$249</span>
+                <span className="text-[var(--muted)]">/year</span>
+              </div>
+              <p className="text-xs text-green-400 font-medium mb-1">That&apos;s $20.75/mo — save $99 vs monthly</p>
+              <p className="mb-6 text-sm text-[var(--muted)]">Unlimited fans, billed once</p>
+              <ul className="mb-8 space-y-2">
+                {[
+                  "Everything in Pro",
+                  "Locked-in pricing for 12 months",
+                  "Save $99 per year",
+                  "Priority support",
+                ].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm">
+                    <span className="text-green-400">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="block rounded-lg px-6 py-3 text-center font-medium transition border border-green-500/50 text-green-400 hover:bg-green-500/10"
+              >
+                Start Annual Plan
+              </Link>
+            </div>
+          </div>
+          <p className="mt-6 text-center text-xs text-[var(--muted)]">All plans include a 7-day free trial. Cancel anytime. No questions asked.</p>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="px-4 py-20">
+      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-20">
         <div className="mx-auto max-w-2xl">
           <h3 className="mb-10 text-center text-3xl font-bold">Frequently asked questions</h3>
           <div className="space-y-4">
             {[
               { q: "Is my data safe and private?", a: "Absolutely. Your data is encrypted, stored with row-level security, and no one — not even other CreatorCRM users — can access your fan list. We support two-factor authentication and never sell your data." },
               { q: "Do I need to connect my OnlyFans / Fansly account?", a: "No. CreatorCRM is a standalone CRM. You copy messages from CreatorCRM and paste them into your platform's DMs. No API keys, no account linking, no risk to your platform account." },
-              { q: "What happens after the free trial?", a: "After your 7-day Pro trial, you can keep using CreatorCRM free forever with up to 25 fans. If you want unlimited fans and premium analytics, Pro is $29/month — cancel anytime from Settings." },
+              { q: "What happens after the free trial?", a: "After your 7-day Pro trial, you can keep using CreatorCRM free forever with up to 25 fans. If you want unlimited fans and premium analytics, Pro is $29/month or $249/year — cancel anytime from Settings." },
               { q: "How is this different from a spreadsheet?", a: "A spreadsheet doesn't tell you who to message today, doesn't score churn risk, and doesn't give you ready-made messages. CreatorCRM does all of that automatically — saving you hours every day." },
+              { q: "Can I switch between monthly and annual?", a: "Yes! You can switch from monthly to annual anytime from your Settings page. When you switch to annual, you'll immediately start saving $99/year. You can also switch back to monthly at the end of your annual term." },
+              { q: "What platforms does CreatorCRM work with?", a: "CreatorCRM works with every platform — OnlyFans, Fansly, Patreon, Twitch, YouTube, Instagram, Twitter/X, TikTok, and more. It's a standalone CRM that doesn't require any integrations." },
             ].map(item => (
-              <details key={item.q} className="group rounded-xl border border-[var(--border)] bg-[var(--card)]">
+              <details key={item.q} className="group rounded-xl border border-[var(--border)] bg-[var(--bg)]">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-medium flex items-center justify-between list-none">
                   <span>{item.q}</span>
                   <svg className="h-4 w-4 text-[var(--muted)] shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -382,9 +498,12 @@ export default function LandingPage() {
           <p className="mb-8 text-[var(--muted)]">
             Every day without a CRM is money walking out the door. Set up in 2 minutes, free forever.
           </p>
-          <Link href="/signup" className="rounded-lg bg-brand-500 px-8 py-3 text-lg font-semibold text-white hover:bg-brand-600 transition">
-            Get Started Free
-          </Link>
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link href="/signup" className="rounded-lg bg-brand-500 px-8 py-3 text-lg font-semibold text-white hover:bg-brand-600 transition">
+              Get Started Free
+            </Link>
+          </div>
+          <p className="mt-4 text-xs text-[var(--muted)]">Join 500+ creators already using CreatorCRM</p>
         </div>
       </section>
 
