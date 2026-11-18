@@ -4,6 +4,15 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  const masked = local.length <= 2
+    ? local[0] + "***"
+    : local[0] + "***" + local[local.length - 1];
+  return `${masked}@${domain}`;
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -28,5 +37,10 @@ export async function GET(req: NextRequest) {
     .eq("referrer_id", user.id)
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ referrals: referrals || [] });
+  const masked = (referrals || []).map((r) => ({
+    ...r,
+    referred_email: maskEmail(r.referred_email),
+  }));
+
+  return NextResponse.json({ referrals: masked });
 }
