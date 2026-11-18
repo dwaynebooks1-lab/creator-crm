@@ -47,6 +47,22 @@ interface Ticket {
   created_at: string;
 }
 
+interface Review {
+  id: string;
+  rating: number;
+  message: string;
+  name: string | null;
+  role: string | null;
+  approved: boolean;
+  created_at: string;
+}
+
+interface Lead {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
 interface Stats {
   total_users: number;
   pro_users: number;
@@ -91,6 +107,10 @@ export default function AdminDashboard() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [ticketFilter, setTicketFilter] = useState<"all" | "open" | "resolved">("open");
 
+  // Reviews & Leads
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+
   // Toast
   const [toast, setToast] = useState("");
 
@@ -117,6 +137,8 @@ export default function AdminDashboard() {
     setStats(data.stats);
     setAnnouncements(data.announcements || []);
     setTickets(data.tickets || []);
+    setReviews(data.reviews || []);
+    setLeads(data.leads || []);
     setLoading(false);
   }, []);
 
@@ -201,6 +223,18 @@ export default function AdminDashboard() {
     await adminAction({ action: "delete_ticket", ticketId: id });
     showToast("Ticket deleted");
     loadData(token);
+  }
+
+  async function handleToggleReview(id: string, approved: boolean) {
+    await adminAction({ action: "toggle_review", reviewId: id, approved });
+    setReviews(prev => prev.map(r => r.id === id ? { ...r, approved } : r));
+    showToast(approved ? "Review approved — now live on landing page" : "Review hidden from landing page");
+  }
+
+  async function handleDeleteReview(id: string) {
+    await adminAction({ action: "delete_review", reviewId: id });
+    setReviews(prev => prev.filter(r => r.id !== id));
+    showToast("Review deleted");
   }
 
   function exportCSV() {
@@ -422,6 +456,90 @@ export default function AdminDashboard() {
               </p>
             );
           })()}
+        </div>
+
+        {/* Reviews */}
+        <div className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Reviews ({reviews.length})</h2>
+            <span className="text-xs text-[var(--muted)]">
+              {reviews.filter(r => r.approved).length} approved
+            </span>
+          </div>
+          {reviews.length > 0 ? (
+            <div className="space-y-4">
+              {reviews.map((r) => (
+                <div key={r.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg)]/50 p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
+                      </span>
+                      {r.approved && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-500/20 border border-green-500/30 text-green-400">
+                          Live
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-[var(--muted)] shrink-0">
+                      {new Date(r.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[var(--muted)] mb-2 whitespace-pre-wrap">{r.message}</p>
+                  {(r.name || r.role) && (
+                    <p className="text-xs text-[var(--muted)] mb-3">
+                      — {r.name || "Anonymous"}{r.role ? `, ${r.role}` : ""}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleToggleReview(r.id, !r.approved)}
+                      className={`rounded px-2.5 py-1 text-xs border transition ${r.approved ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "border-green-500/30 text-green-400 hover:bg-green-500/10"}`}
+                    >
+                      {r.approved ? "Hide" : "Approve"}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteReview(r.id)}
+                      className="rounded px-2.5 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">No reviews yet.</p>
+          )}
+        </div>
+
+        {/* Leads */}
+        <div className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <h2 className="text-lg font-semibold mb-4">Leads ({leads.length})</h2>
+          {leads.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-[var(--muted)] border-b border-[var(--border)]">
+                    <th className="pb-2 pr-4">#</th>
+                    <th className="pb-2 pr-4">Email</th>
+                    <th className="pb-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map((l, i) => (
+                    <tr key={l.id} className="border-b border-[var(--border)]/50">
+                      <td className="py-2 pr-4 text-[var(--muted)]">{i + 1}</td>
+                      <td className="py-2 pr-4">{l.email}</td>
+                      <td className="py-2 text-[var(--muted)]">{new Date(l.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">No leads yet.</p>
+          )}
         </div>
 
         {/* Activity Log */}
