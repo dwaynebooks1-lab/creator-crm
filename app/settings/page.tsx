@@ -240,8 +240,8 @@ export default function Settings() {
     setTimeout(() => setMfaMsg({ type: "", text: "" }), 3000);
   }
 
-  async function handleUpgrade() {
-    const res = await fetch("/api/checkout", { method: "POST" });
+  async function handleUpgrade(plan: "monthly" | "annual" = "monthly") {
+    const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan }) });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   }
@@ -473,7 +473,7 @@ export default function Settings() {
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-3 font-medium">Your plan includes:</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {["Unlimited fan tracking", "Revenue analytics & charts", "CSV import & export", "Retention dashboard", "Smart tag suggestions", "Priority support"].map(f => (
+                  {["Unlimited fan tracking", "Revenue analytics & charts", "CSV import & export", "Platform tracking", "AI DM scripts", "Best time to message", "Revenue milestones", "Fan LTV estimator", "Retention dashboard", "Smart tag suggestions", "Weekly digest & insights", "Priority support"].map(f => (
                     <div key={f} className="flex items-center gap-2 text-xs">
                       <span className="text-green-400">✓</span>
                       <span className="text-[var(--muted)]">{f}</span>
@@ -491,19 +491,24 @@ export default function Settings() {
                 </div>
               </div>
               <div className="rounded-lg border border-brand-500/30 bg-brand-500/5 p-4 mb-4">
-                <p className="text-sm font-semibold mb-2">Upgrade to Pro — $29/mo</p>
+                <p className="text-sm font-semibold mb-2">Upgrade to Pro</p>
                 <p className="text-xs text-[var(--muted)] mb-3">Unlock unlimited fans and premium features:</p>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                  {["Unlimited fan tracking", "Revenue analytics & charts", "CSV import & export", "Retention dashboard", "Smart tag suggestions", "Priority support"].map(f => (
+                  {["Unlimited fan tracking", "Revenue analytics & charts", "CSV import & export", "Platform tracking", "AI DM scripts", "Best time to message", "Revenue milestones", "Fan LTV estimator", "Retention dashboard", "Smart tag suggestions", "Weekly digest & insights", "Priority support"].map(f => (
                     <div key={f} className="flex items-center gap-2 text-xs">
                       <span className="text-brand-400">+</span>
                       <span className="text-[var(--muted)]">{f}</span>
                     </div>
                   ))}
                 </div>
-                <button onClick={handleUpgrade} className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
-                  Start 7-Day Free Trial
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button onClick={() => handleUpgrade("monthly")} className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+                    Pro Monthly — $29/mo
+                  </button>
+                  <button onClick={() => handleUpgrade("annual")} className="rounded-lg border border-green-500/50 px-6 py-2.5 text-sm font-medium text-green-400 hover:bg-green-500/10 transition">
+                    Pro Annual — $249/yr (save $99)
+                  </button>
+                </div>
               </div>
             </div>
           )}

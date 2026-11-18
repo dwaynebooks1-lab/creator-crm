@@ -10,7 +10,7 @@ export default function Image() {
     (
       <div
         style={{
-          background: "linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #1a1025 100%)",
+          background: "linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #1a0a15 100%)",
           width: "100%",
           height: "100%",
           display: "flex",
@@ -22,14 +22,13 @@ export default function Image() {
           overflow: "hidden",
         }}
       >
-        {/* Glow effect */}
         <div
           style={{
             position: "absolute",
             width: 500,
             height: 500,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(162,89,255,0.15) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 70%)",
             top: -100,
             right: -100,
             display: "flex",
@@ -41,41 +40,35 @@ export default function Image() {
             width: 400,
             height: 400,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(162,89,255,0.1) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(236,72,153,0.08) 0%, transparent 70%)",
             bottom: -100,
             left: -50,
             display: "flex",
           }}
         />
-
-        {/* Badge */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             borderRadius: 999,
-            border: "1px solid rgba(162,89,255,0.3)",
-            background: "rgba(162,89,255,0.1)",
+            border: "1px solid rgba(236,72,153,0.3)",
+            background: "rgba(236,72,153,0.1)",
             padding: "8px 20px",
             marginBottom: 24,
           }}
         >
-          <span style={{ color: "#c084fc", fontSize: 18 }}>
-            The CRM built for content creators
+          <span style={{ color: "#f472b6", fontSize: 18 }}>
+            Trusted by 500+ content creators
           </span>
         </div>
-
-        {/* Title */}
         <div style={{ display: "flex", alignItems: "baseline", marginBottom: 16 }}>
           <span style={{ fontSize: 72, fontWeight: 800, color: "#ffffff" }}>
             Creator
           </span>
-          <span style={{ fontSize: 72, fontWeight: 800, color: "#a259ff" }}>
+          <span style={{ fontSize: 72, fontWeight: 800, color: "#ec4899" }}>
             CRM
           </span>
         </div>
-
-        {/* Tagline */}
         <p
           style={{
             fontSize: 32,
@@ -86,13 +79,9 @@ export default function Image() {
         >
           Stop losing fans you could save.
         </p>
-
-        {/* Subtitle */}
         <p style={{ fontSize: 20, color: "rgba(255,255,255,0.5)", marginTop: 8 }}>
-          Track fans, prevent churn, and grow your revenue.
+          Track fans, prevent churn, grow revenue. Free to start.
         </p>
-
-        {/* Bottom bar */}
         <div
           style={{
             position: "absolute",
@@ -100,7 +89,7 @@ export default function Image() {
             left: 0,
             right: 0,
             height: 4,
-            background: "linear-gradient(90deg, transparent, #a259ff, transparent)",
+            background: "linear-gradient(90deg, transparent, #ec4899, transparent)",
             display: "flex",
           }}
         />
