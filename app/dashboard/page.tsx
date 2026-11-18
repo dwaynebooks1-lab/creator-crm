@@ -486,6 +486,23 @@ export default function Dashboard() {
 
   const revenueAtRisk = fans.filter(f => churnScore(f) >= 60).reduce((s, f) => s + (f.total_spent || 0), 0);
 
+  const messagingStreak = useMemo(() => {
+    const days = new Set<string>();
+    fans.forEach(f => {
+      if (f.last_message_at) days.add(new Date(f.last_message_at).toISOString().split("T")[0]);
+    });
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (days.has(d.toISOString().split("T")[0])) streak++;
+      else if (i > 0) break;
+    }
+    return streak;
+  }, [fans]);
+
+
   const weeklySummary = useMemo(() => {
     const now = Date.now();
     const weekAgo = now - 7 * 86400000;
@@ -501,6 +518,17 @@ export default function Dashboard() {
     const messaged7d = fans.filter(f => f.last_message_at && new Date(f.last_message_at).getTime() >= weekAgo).length;
     return { thisWeekFans, lastWeekFans, messaged7d };
   }, [fans]);
+
+  const nextStep = useMemo(() => {
+    if (fans.length === 0) return null;
+    const unmessaged = fans.filter(f => !f.last_message_at);
+    if (unmessaged.length > 0) return { icon: "✉", text: `${unmessaged.length} fan${unmessaged.length !== 1 ? "s have" : " has"} never been messaged. Send a welcome!`, action: "Message them", priority: 1 };
+    if (actionItems.length > 0) return { icon: "⚡", text: `${actionItems.length} fan${actionItems.length !== 1 ? "s" : ""} need your attention in the Action Center.`, action: "Take action", priority: 2 };
+    if (!revenueGoal) return { icon: "🎯", text: "Set a revenue goal to track your progress and stay motivated.", action: "Set goal", priority: 3 };
+    const engagement = fans.length > 0 ? weeklySummary.messaged7d / fans.length : 0;
+    if (engagement < 0.5) return { icon: "💬", text: "Your engagement is below 50%. Try messaging a few fans today!", action: "Browse fans", priority: 4 };
+    return { icon: "🔥", text: "You're crushing it! Keep up the momentum.", action: null, priority: 5 };
+  }, [fans, actionItems, revenueGoal, weeklySummary]);
 
   function getMilestones(spent: number): { label: string; color: string }[] {
     const m: { label: string; color: string }[] = [];
@@ -686,6 +714,57 @@ export default function Dashboard() {
           <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
         </div>
 
+        {/* Fan Health Bar */}
+        {fans.length >= 2 && (() => {
+          const tagOrder: Tag[] = ["whale", "vip", "regular", "new", "at-risk"];
+          const TAG_BAR_BG: Record<Tag, string> = {
+            whale: "bg-purple-500", vip: "bg-amber-500", regular: "bg-blue-500", new: "bg-green-500", "at-risk": "bg-red-500",
+          };
+          const counts = tagOrder.map(t => ({ tag: t, count: fans.filter(f => f.tag === t).length })).filter(t => t.count > 0);
+          return (
+            <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Audience Health</h3>
+                {messagingStreak > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-1">
+                    <span className="text-xs">🔥</span>
+                    <span className="text-xs font-medium text-amber-400">{messagingStreak}-day streak</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex h-4 rounded-full overflow-hidden mb-3">
+                {counts.map(({ tag, count }) => (
+                  <div key={tag} className={`${TAG_BAR_BG[tag]} transition-all`}
+                    style={{ width: `${(count / fans.length) * 100}%` }}
+                    title={`${TAG_LABELS[tag]}: ${count}`} />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {counts.map(({ tag, count }) => (
+                  <div key={tag} className="flex items-center gap-1.5">
+                    <div className={`h-2.5 w-2.5 rounded-full ${TAG_BAR_BG[tag]}`} />
+                    <span className="text-xs text-[var(--muted)]">{TAG_LABELS[tag]} <span className="font-medium text-white">{count}</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Next Step Nudge */}
+        {nextStep && fans.length > 0 && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-brand-500/20 bg-brand-500/5 p-4">
+            <span className="text-xl shrink-0">{nextStep.icon}</span>
+            <p className="text-sm text-[var(--muted)] flex-1">{nextStep.text}</p>
+            {nextStep.action && nextStep.priority === 3 && (
+              <button onClick={() => { setGoalInput(""); setShowGoalModal(true); }}
+                className="shrink-0 rounded-lg bg-brand-500/20 border border-brand-500/30 px-3 py-1.5 text-xs font-medium text-brand-400 hover:bg-brand-500/30 transition">
+                {nextStep.action}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Weekly Summary + Revenue Goal */}
         {fans.length >= 2 && (
           <div className="mb-6 grid gap-3 sm:grid-cols-2">
@@ -706,12 +785,29 @@ export default function Dashboard() {
                 <div>
                   <p className="text-xl font-bold">{weeklySummary.messaged7d}</p>
                   <p className="text-xs text-[var(--muted)]">messaged</p>
-                  <p className="text-xs text-[var(--muted)] mt-0.5">past 7 days</p>
+                  {weeklySummary.messaged7d === 0 ? (
+                    <p className="text-xs text-amber-400 mt-0.5">start today!</p>
+                  ) : (
+                    <p className="text-xs text-[var(--muted)] mt-0.5">past 7 days</p>
+                  )}
                 </div>
                 <div>
-                  <p className="text-xl font-bold">{fans.length > 0 ? Math.round((weeklySummary.messaged7d / fans.length) * 100) : 0}%</p>
-                  <p className="text-xs text-[var(--muted)]">engagement</p>
-                  <p className="text-xs text-[var(--muted)] mt-0.5">of total fans</p>
+                  {(() => {
+                    const pct = fans.length > 0 ? Math.round((weeklySummary.messaged7d / fans.length) * 100) : 0;
+                    return (
+                      <>
+                        <p className={`text-xl font-bold ${pct === 0 ? "" : pct >= 50 ? "text-green-400" : pct >= 25 ? "text-amber-400" : ""}`}>{pct}%</p>
+                        <p className="text-xs text-[var(--muted)]">engagement</p>
+                        {pct === 0 ? (
+                          <p className="text-xs text-amber-400 mt-0.5">message 1 fan to start</p>
+                        ) : pct >= 75 ? (
+                          <p className="text-xs text-green-400 mt-0.5">excellent!</p>
+                        ) : (
+                          <p className="text-xs text-[var(--muted)] mt-0.5">of total fans</p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
