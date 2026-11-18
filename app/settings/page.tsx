@@ -449,32 +449,64 @@ export default function Settings() {
         {/* Subscription */}
         <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
           <h2 className="text-lg font-semibold mb-4">Subscription</h2>
-          <div className="flex items-center justify-between">
+          {plan === "pro" ? (
             <div>
-              <p className="font-medium">{plan === "pro" ? "Pro Plan" : "Free Plan"}</p>
-              <p className="text-sm text-[var(--muted)]">{plan === "pro" ? "$29/month — Unlimited fans" : "Up to 25 fans"}</p>
-            </div>
-            {plan !== "pro" && (
-              <button onClick={handleUpgrade} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
-                Upgrade to Pro
-              </button>
-            )}
-            {plan === "pro" && (
-              <div className="flex items-center gap-3">
-                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-3 py-1 text-sm font-medium text-brand-400">Active</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="font-semibold text-lg">Pro Plan</p>
+                    <p className="text-sm text-[var(--muted)]">$29/month</p>
+                  </div>
+                  <span className="rounded-full bg-green-500/20 border border-green-500/30 px-3 py-1 text-xs font-medium text-green-400">Active</span>
+                </div>
                 <button
                   onClick={async () => {
                     const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user?.id }) });
                     const data = await res.json();
                     if (data.url) window.location.href = data.url;
                   }}
-                  className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition"
+                  className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition"
                 >
                   Manage Subscription
                 </button>
               </div>
-            )}
-          </div>
+              <div className="rounded-lg bg-white/5 p-4">
+                <p className="text-xs text-[var(--muted)] mb-3 font-medium">Your plan includes:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {["Unlimited fan tracking", "Revenue analytics & charts", "CSV import & export", "Retention dashboard", "Smart tag suggestions", "Priority support"].map(f => (
+                    <div key={f} className="flex items-center gap-2 text-xs">
+                      <span className="text-green-400">✓</span>
+                      <span className="text-[var(--muted)]">{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="font-semibold text-lg">Free Plan</p>
+                  <p className="text-sm text-[var(--muted)]">Up to 25 fans</p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-brand-500/30 bg-brand-500/5 p-4 mb-4">
+                <p className="text-sm font-semibold mb-2">Upgrade to Pro — $29/mo</p>
+                <p className="text-xs text-[var(--muted)] mb-3">Unlock unlimited fans and premium features:</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {["Unlimited fan tracking", "Revenue analytics & charts", "CSV import & export", "Retention dashboard", "Smart tag suggestions", "Priority support"].map(f => (
+                    <div key={f} className="flex items-center gap-2 text-xs">
+                      <span className="text-brand-400">+</span>
+                      <span className="text-[var(--muted)]">{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={handleUpgrade} className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+                  Start 7-Day Free Trial
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Data Export */}

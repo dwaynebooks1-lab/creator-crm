@@ -138,6 +138,20 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Platform Compatibility */}
+      <section className="px-4 py-14">
+        <div className="mx-auto max-w-4xl text-center">
+          <h3 className="mb-3 text-2xl font-bold">Works with every platform</h3>
+          <p className="mb-8 text-sm text-[var(--muted)]">CreatorCRM works alongside your existing workflow. Copy a message, paste it into your DMs. That simple.</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            {["OnlyFans", "Fansly", "Instagram", "Twitter / X", "Snapchat", "Telegram", "Reddit", "TikTok"].map(p => (
+              <div key={p} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-5 py-2.5 text-sm font-medium">{p}</div>
+            ))}
+          </div>
+          <p className="mt-5 text-xs text-[var(--muted)]">No integrations needed. No API keys. Just copy, paste, and send.</p>
+        </div>
+      </section>
+
       {/* Testimonials */}
       <section className="px-4 py-16">
         <div className="mx-auto max-w-5xl">
@@ -287,6 +301,33 @@ export default function LandingPage() {
                   {p.cta}
                 </Link>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-2xl">
+          <h3 className="mb-10 text-center text-3xl font-bold">Frequently asked questions</h3>
+          <div className="space-y-4">
+            {[
+              { q: "Is my data safe and private?", a: "Absolutely. Your data is encrypted, stored with row-level security, and no one — not even other CreatorCRM users — can access your fan list. We support two-factor authentication and never sell your data." },
+              { q: "Do I need to connect my OnlyFans / Fansly account?", a: "No. CreatorCRM is a standalone CRM. You copy messages from CreatorCRM and paste them into your platform's DMs. No API keys, no account linking, no risk to your platform account." },
+              { q: "What happens after the free trial?", a: "After your 7-day Pro trial, you can keep using CreatorCRM free forever with up to 25 fans. If you want unlimited fans and premium analytics, Pro is $29/month — cancel anytime from Settings." },
+              { q: "How is this different from a spreadsheet?", a: "A spreadsheet doesn't tell you who to message today, doesn't score churn risk, and doesn't give you ready-made messages. CreatorCRM does all of that automatically — saving you hours every day." },
+            ].map(item => (
+              <details key={item.q} className="group rounded-xl border border-[var(--border)] bg-[var(--card)]">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-medium flex items-center justify-between list-none">
+                  <span>{item.q}</span>
+                  <svg className="h-4 w-4 text-[var(--muted)] shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div className="px-5 pb-4 text-sm text-[var(--muted)] leading-relaxed border-t border-[var(--border)] pt-3">
+                  {item.a}
+                </div>
+              </details>
             ))}
           </div>
         </div>
