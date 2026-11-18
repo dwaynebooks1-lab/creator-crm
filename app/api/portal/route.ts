@@ -35,15 +35,25 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!creator?.stripe_customer_id) {
+  const stripe = getStripe();
+  let customerId = creator?.stripe_customer_id;
+
+  if (!customerId && user.email) {
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      await supabase.from("creators").update({ stripe_customer_id: customerId }).eq("id", user.id);
+    }
+  }
+
+  if (!customerId) {
     return NextResponse.json({ error: "No subscription found" }, { status: 404 });
   }
 
   const origin = req.headers.get("origin") || "https://creatorcrm.net";
-  const stripe = getStripe();
 
   const session = await stripe.billingPortal.sessions.create({
-    customer: creator.stripe_customer_id,
+    customer: customerId,
     return_url: `${origin}/dashboard`,
   });
 
