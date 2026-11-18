@@ -123,6 +123,35 @@ export async function sendContactNotification(
   });
 }
 
+export async function sendNudgeEmail(to: string, name?: string | null) {
+  const firstName = esc(name?.split(" ")[0] || "there");
+
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `${firstName}, your fans are waiting for you`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">Hey ${firstName}, your dashboard is ready!</h1>
+        <p style="color: #6b7280; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+          You signed up for CreatorCRM a couple days ago but haven't added any fans yet. Here's a quick reminder of what's waiting for you:
+        </p>
+        <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+          <p style="font-size: 14px; color: #374151; margin: 8px 0;"><strong>Know who to message</strong> — The Action Center tells you exactly which fans need a DM today.</p>
+          <p style="font-size: 14px; color: #374151; margin: 8px 0;"><strong>Stop losing subscribers</strong> — Churn risk scoring flags fans before they cancel.</p>
+          <p style="font-size: 14px; color: #374151; margin: 8px 0;"><strong>Takes 2 minutes</strong> — Add fans manually or import a CSV. That's it.</p>
+        </div>
+        <a href="https://creatorcrm.net/dashboard" style="display: inline-block; background: #ec4899; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">
+          Add Your First Fan
+        </a>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
+          Not interested? No worries — we won't send this again. If you have questions, reply to this email.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendDigestEmail(
   to: string,
   name: string | null,
