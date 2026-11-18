@@ -163,6 +163,7 @@ export default function Dashboard() {
   const [batchMessage, setBatchMessage] = useState("");
   const [notesHistory, setNotesHistory] = useState<Record<string, Array<{ text: string; at: string }>>>({});
   const [referralCode, setReferralCode] = useState("");
+  const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -248,6 +249,7 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     let list = fans;
     if (filter !== "all") list = list.filter((f) => f.tag === filter);
+    if (platformFilter !== "all") list = list.filter((f) => (f.platform || "") === platformFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((f) => f.name.toLowerCase().includes(q));
@@ -264,7 +266,16 @@ export default function Dashboard() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return list;
-  }, [fans, filter, search, sortKey, sortDir]);
+  }, [fans, filter, platformFilter, search, sortKey, sortDir]);
+
+  const platformCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    fans.forEach(f => {
+      const p = f.platform || "";
+      if (p) counts[p] = (counts[p] || 0) + 1;
+    });
+    return counts;
+  }, [fans]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -1076,6 +1087,53 @@ export default function Dashboard() {
           <StatCard label="Messaged 7d" value={String(messagedThisWeek)} sub={`of ${fans.length} fans`} accent={messagedThisWeek > 0 ? "text-green-400" : ""} />
           <StatCard label="Streak" value={messagingStreak > 0 ? `${messagingStreak}d` : "—"} sub={messagingStreak >= 7 ? "on fire!" : messagingStreak > 0 ? "keep going" : "message a fan"} accent={messagingStreak >= 7 ? "text-brand-400" : messagingStreak > 0 ? "text-green-400" : ""} />
         </div>
+
+        {/* Priority Action Banner */}
+        {actionItems.length > 0 && (
+          <div className={`mb-6 rounded-xl border p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+            actionItems[0].priority <= 2 ? "border-red-500/30 bg-red-500/5" : "border-amber-500/30 bg-amber-500/5"
+          }`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                actionItems[0].priority <= 2 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
+              }`}>!</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{actionItems[0].fan.name} — {actionItems[0].reason}</p>
+                <p className="text-xs text-[var(--muted)] mt-0.5">{actionItems.length > 1 ? `+ ${actionItems.length - 1} more action${actionItems.length > 2 ? "s" : ""} needed` : "Take action now"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={() => { navigator.clipboard.writeText(actionItems[0].message); setToast("Message copied!"); }}
+                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap">
+                Copy Message
+              </button>
+              <button onClick={() => setSelected(actionItems[0].fan)}
+                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition whitespace-nowrap">
+                View Fan
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Platform Breakdown */}
+        {Object.keys(platformCounts).length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[var(--muted)] mr-1">Platforms:</span>
+            {Object.entries(platformCounts).sort((a, b) => b[1] - a[1]).map(([p, count]) => (
+              <button key={p} onClick={() => setPlatformFilter(platformFilter === p ? "all" : p as Platform)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                  platformFilter === p
+                    ? "border-brand-500 bg-brand-500/20 text-brand-400"
+                    : PLATFORM_LABELS[p] ? PLATFORM_LABELS[p].color + " border" : "border-[var(--border)] text-[var(--muted)]"
+                }`}>
+                {PLATFORM_LABELS[p]?.label || p} ({count})
+              </button>
+            ))}
+            {platformFilter !== "all" && (
+              <button onClick={() => setPlatformFilter("all")} className="text-xs text-[var(--muted)] hover:text-white transition ml-1">&times; Clear</button>
+            )}
+          </div>
+        )}
 
         {/* Refer a Friend */}
         {referralCode && fans.length > 0 && (
