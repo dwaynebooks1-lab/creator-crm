@@ -132,6 +132,8 @@ export default function Dashboard() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [showSpotlight, setShowSpotlight] = useState(false);
+  const [spotlightQuery, setSpotlightQuery] = useState("");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -557,6 +559,12 @@ export default function Dashboard() {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSpotlight(prev => !prev);
+        setSpotlightQuery("");
+        return;
+      }
       if (isInput) {
         if (e.key === "Escape") (target as HTMLInputElement).blur();
         return;
@@ -577,6 +585,7 @@ export default function Dashboard() {
         setShowImportModal(false);
         setShowGoalModal(false);
         setShowBulkTag(false);
+        setShowSpotlight(false);
         setConfirmDelete(null);
       }
     }
@@ -624,6 +633,12 @@ export default function Dashboard() {
             Creator<span className="text-brand-500">CRM</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => { setShowSpotlight(true); setSpotlightQuery(""); }}
+              className="hidden sm:flex items-center gap-2 rounded-lg border border-[var(--border)] bg-white/5 px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white hover:border-[var(--muted)] transition">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <span>Search</span>
+              <kbd className="rounded border border-[var(--border)] bg-white/5 px-1 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
             {actionItems.length > 0 && (
               <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white" title={`${actionItems.length} fans need attention`}>
                 {actionItems.length}
@@ -1819,6 +1834,84 @@ export default function Dashboard() {
         <span><kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 font-mono">T</kbd> Templates</span>
         <span><kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 font-mono">Esc</kbd> Close</span>
       </div>
+
+      {/* Spotlight / Command Palette (Cmd+K) */}
+      {showSpotlight && (
+        <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh] px-4" onClick={() => setShowSpotlight(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-lg rounded-xl bg-[var(--card)] border border-[var(--border)] shadow-2xl overflow-hidden animate-[slideUp_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-3">
+              <svg className="h-5 w-5 text-[var(--muted)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search fans, actions..."
+                value={spotlightQuery}
+                onChange={(e) => setSpotlightQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") setShowSpotlight(false); }}
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted)]"
+              />
+              <kbd className="hidden sm:inline rounded border border-[var(--border)] bg-white/5 px-1.5 py-0.5 text-[10px] text-[var(--muted)]">ESC</kbd>
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto p-2">
+              {/* Quick actions */}
+              {!spotlightQuery.trim() && (
+                <div className="mb-1">
+                  <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">Quick Actions</p>
+                  {[
+                    { label: "Add Fan", icon: "+", action: () => { setShowSpotlight(false); openAddModal(); }, kbd: "N" },
+                    { label: "Message Templates", icon: "✉", action: () => { setShowSpotlight(false); setShowTemplates(true); }, kbd: "T" },
+                    ...(isPro ? [{ label: "Export CSV", icon: "↓", action: () => { setShowSpotlight(false); exportCSV(); }, kbd: "" }] : []),
+                    { label: "Settings", icon: "⚙", action: () => { setShowSpotlight(false); router.push("/settings"); }, kbd: "" },
+                    { label: "Help", icon: "?", action: () => { setShowSpotlight(false); router.push("/help"); }, kbd: "" },
+                  ].map((a) => (
+                    <button key={a.label} onClick={a.action}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--muted)] hover:bg-white/5 hover:text-white transition text-left">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 border border-[var(--border)] text-xs shrink-0">{a.icon}</span>
+                      <span className="flex-1">{a.label}</span>
+                      {a.kbd && <kbd className="rounded border border-[var(--border)] bg-white/5 px-1.5 py-0.5 text-[10px] text-[var(--muted)]">{a.kbd}</kbd>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Fan search results */}
+              {spotlightQuery.trim() && (() => {
+                const q = spotlightQuery.toLowerCase();
+                const matches = fans.filter(f => f.name.toLowerCase().includes(q)).slice(0, 8);
+                return matches.length > 0 ? (
+                  <div>
+                    <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">Fans</p>
+                    {matches.map(f => (
+                      <button key={f.id} onClick={() => { setShowSpotlight(false); setSelected(f); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-white/5 transition text-left">
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${TAG_COLORS[f.tag]}`}>
+                          {f.name.charAt(0).toUpperCase()}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{f.name}</p>
+                          <p className="text-xs text-[var(--muted)]">{TAG_LABELS[f.tag]} · ${f.total_spent.toLocaleString()}</p>
+                        </div>
+                        <span className="text-xs text-[var(--muted)] shrink-0">{daysAgo(f.last_message_at)}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-8 text-center">
+                    <p className="text-sm text-[var(--muted)]">No fans matching &ldquo;{spotlightQuery}&rdquo;</p>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="border-t border-[var(--border)] px-4 py-2 flex items-center justify-between text-[10px] text-[var(--muted)]">
+              <span>Type to search fans</span>
+              <div className="flex items-center gap-2">
+                <span><kbd className="rounded border border-[var(--border)] bg-white/5 px-1 py-0.5">↑↓</kbd> navigate</span>
+                <span><kbd className="rounded border border-[var(--border)] bg-white/5 px-1 py-0.5">↵</kbd> select</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Message Templates Modal */}
       {showTemplates && (
