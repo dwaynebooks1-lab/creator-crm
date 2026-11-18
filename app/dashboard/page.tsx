@@ -694,10 +694,46 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-          <p className="text-[var(--muted)]">Loading your dashboard...</p>
+      <div className="min-h-screen">
+        <nav className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm px-4 py-3">
+          <div className="mx-auto flex max-w-7xl items-center justify-between">
+            <div className="text-xl font-bold">Creator<span className="text-brand-500">CRM</span></div>
+            <div className="flex gap-2">
+              <div className="h-8 w-16 rounded-lg bg-white/5 animate-pulse" />
+              <div className="h-8 w-16 rounded-lg bg-white/5 animate-pulse" />
+            </div>
+          </div>
+        </nav>
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <div className="h-7 w-48 rounded bg-white/5 animate-pulse mb-2" />
+              <div className="h-4 w-64 rounded bg-white/5 animate-pulse" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-9 w-24 rounded-lg bg-white/5 animate-pulse" />
+              <div className="h-9 w-24 rounded-lg bg-brand-500/20 animate-pulse" />
+            </div>
+          </div>
+          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <div className="h-3 w-16 rounded bg-white/5 animate-pulse mb-2" />
+                <div className="h-6 w-20 rounded bg-white/5 animate-pulse mb-1" />
+                <div className="h-3 w-14 rounded bg-white/5 animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 py-3 border-b border-[var(--border)] last:border-0">
+                <div className="h-4 w-32 rounded bg-white/5 animate-pulse" />
+                <div className="h-5 w-16 rounded-full bg-white/5 animate-pulse" />
+                <div className="h-4 w-16 rounded bg-white/5 animate-pulse" />
+                <div className="h-4 w-24 rounded bg-white/5 animate-pulse ml-auto" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -2811,6 +2847,15 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Floating keyboard shortcut hint */}
+      <button
+        onClick={() => setShowShortcuts(true)}
+        className="fixed bottom-4 right-4 z-30 hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition shadow-lg"
+      >
+        <kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 text-[10px] font-mono">?</kbd>
+        <span>Shortcuts</span>
+      </button>
     </div>
   );
 }
