@@ -543,6 +543,29 @@ export default function Settings() {
           </button>
         </div>
 
+        {/* Share CreatorCRM */}
+        <div className="mb-6 rounded-xl border border-brand-500/30 bg-brand-500/5 p-6">
+          <h2 className="text-lg font-semibold mb-1">Share CreatorCRM</h2>
+          <p className="text-xs text-[var(--muted)] mb-4">Know a creator who could use this? Share the link and help them keep more fans.</p>
+          <div className="flex gap-3">
+            <input
+              type="text" readOnly value="https://creatorcrm.net"
+              className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-[var(--muted)] outline-none"
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText("https://creatorcrm.net");
+                const btn = document.getElementById("copy-share-btn");
+                if (btn) { btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = "Copy Link"; }, 2000); }
+              }}
+              id="copy-share-btn"
+              className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition whitespace-nowrap"
+            >
+              Copy Link
+            </button>
+          </div>
+        </div>
+
         {/* Danger Zone */}
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6">
           <h2 className="text-lg font-semibold text-red-400 mb-2">Danger Zone</h2>

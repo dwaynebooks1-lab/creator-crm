@@ -1024,6 +1024,43 @@ export default function Dashboard() {
           <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
         </div>
 
+        {/* Welcome Card — shown when user has no fans */}
+        {fans.length === 0 && (
+          <div className="mb-6 rounded-xl border border-brand-500/30 bg-brand-500/5 p-6 sm:p-8">
+            <div className="text-center max-w-lg mx-auto">
+              <div className="text-4xl mb-3">👋</div>
+              <h2 className="text-xl font-bold mb-2">Welcome to CreatorCRM!</h2>
+              <p className="text-sm text-[var(--muted)] mb-6">Get set up in under 2 minutes. Add your first fans and let CreatorCRM tell you exactly who to message.</p>
+              <div className="grid gap-4 sm:grid-cols-3 mb-6">
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+                  <div className="text-2xl mb-2">1</div>
+                  <p className="text-sm font-medium mb-1">Add fans</p>
+                  <p className="text-xs text-[var(--muted)]">Click &quot;+ Add Fan&quot; or import a CSV file</p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+                  <div className="text-2xl mb-2">2</div>
+                  <p className="text-sm font-medium mb-1">Get action items</p>
+                  <p className="text-xs text-[var(--muted)]">We&apos;ll tell you who to message and when</p>
+                </div>
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+                  <div className="text-2xl mb-2">3</div>
+                  <p className="text-sm font-medium mb-1">Grow revenue</p>
+                  <p className="text-xs text-[var(--muted)]">Keep fans longer and earn more every month</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onClick={openAddModal} className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+                  + Add Your First Fan
+                </button>
+                <label className="rounded-lg border border-[var(--border)] px-6 py-2.5 text-sm text-[var(--muted)] hover:text-white transition cursor-pointer text-center">
+                  Import from CSV
+                  <input type="file" accept=".csv" onChange={handleCSVFile} className="hidden" />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Platform Summary — Pro only */}
         {isPro && fans.some(f => f.platform) && (() => {
           const platformCounts: Record<string, { count: number; revenue: number }> = {};
