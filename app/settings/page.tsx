@@ -14,6 +14,7 @@ export default function Settings() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState("free");
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
 
   // Profile
   const [name, setName] = useState("");
@@ -51,8 +52,11 @@ export default function Settings() {
       setName(u.user_metadata?.name || "");
 
       const { data: creator } = await supabase
-        .from("creators").select("plan").eq("id", u.id).single();
-      if (creator) setPlan(creator.plan);
+        .from("creators").select("plan, stripe_customer_id").eq("id", u.id).single();
+      if (creator) {
+        setPlan(creator.plan);
+        setHasStripeCustomer(!!creator.stripe_customer_id);
+      }
 
       // Check MFA status
       const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -460,26 +464,30 @@ export default function Settings() {
                   </div>
                   <span className="rounded-full bg-green-500/20 border border-green-500/30 px-3 py-1 text-xs font-medium text-green-400">Active</span>
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      const { data: { session: authSession } } = await supabase.auth.getSession();
-                      if (!authSession?.access_token) {
-                        alert("Session expired. Please log in again.");
-                        return;
+                {hasStripeCustomer ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { data: { session: authSession } } = await supabase.auth.getSession();
+                        if (!authSession?.access_token) {
+                          alert("Session expired. Please log in again.");
+                          return;
+                        }
+                        const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession.access_token}` } });
+                        const data = await res.json();
+                        if (data.url) window.location.href = data.url;
+                        else alert(data.error || "Could not open billing portal");
+                      } catch {
+                        alert("Something went wrong. Please try again.");
                       }
-                      const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession.access_token}` } });
-                      const data = await res.json();
-                      if (data.url) window.location.href = data.url;
-                      else alert(data.error || "Could not open billing portal");
-                    } catch {
-                      alert("Something went wrong. Please try again.");
-                    }
-                  }}
-                  className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition"
-                >
-                  Manage Subscription
-                </button>
+                    }}
+                    className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition"
+                  >
+                    Manage Subscription
+                  </button>
+                ) : (
+                  <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-3 py-1 text-xs font-medium text-brand-400">Admin</span>
+                )}
               </div>
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-3 font-medium">Your plan includes:</p>
