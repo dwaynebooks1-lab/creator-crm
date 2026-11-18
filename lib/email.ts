@@ -62,6 +62,29 @@ export async function sendSignupNotification(email: string, name?: string) {
   });
 }
 
+export async function sendLeadNotification(email: string) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return;
+
+  return getResend().emails.send({
+    from: FROM,
+    to: adminEmail,
+    subject: `[New Lead] ${email} wants updates`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New Lead Captured</h1>
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <p style="font-size: 14px; color: #1e40af; margin: 0;"><strong>Email:</strong> ${email}</p>
+        </div>
+        <p style="font-size: 13px; color: #6b7280;">They dropped their email on the landing page — interested but not ready to sign up yet.</p>
+        <a href="https://creatorcrm.net/admin" style="display: inline-block; background: #ec4899; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; margin-top: 16px;">
+          View Leads
+        </a>
+      </div>
+    `,
+  });
+}
+
 export async function sendContactNotification(
   ticket: { name: string; email: string; subject: string; message: string }
 ) {

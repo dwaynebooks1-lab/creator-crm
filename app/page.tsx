@@ -89,6 +89,9 @@ export default function LandingPage() {
   const [leadEmail, setLeadEmail] = useState("");
   const [leadStatus, setLeadStatus] = useState<"" | "sending" | "done" | "error">("");
   const [reviews, setReviews] = useState<Array<{ rating: number; message: string; name: string | null; role: string | null }>>([]);
+  const [showExitPopup, setShowExitPopup] = useState(false);
+  const [exitDismissed, setExitDismissed] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -101,6 +104,24 @@ export default function LandingPage() {
     });
     fetch("/api/reviews").then(r => r.json()).then(d => { if (d.reviews?.length) setReviews(d.reviews); }).catch(() => {});
   }, [router]);
+
+  useEffect(() => {
+    function handleMouseLeave(e: MouseEvent) {
+      if (e.clientY <= 0 && !exitDismissed && !showExitPopup) {
+        setShowExitPopup(true);
+      }
+    }
+    document.addEventListener("mouseleave", handleMouseLeave);
+    return () => document.removeEventListener("mouseleave", handleMouseLeave);
+  }, [exitDismissed, showExitPopup]);
+
+  useEffect(() => {
+    function handleScroll() {
+      setScrolled(window.scrollY > 500);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   if (checkingAuth) {
     return (
@@ -743,6 +764,50 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      {/* Sticky Mobile CTA */}
+      {scrolled && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm px-4 py-3 sm:hidden">
+          <Link
+            href="/signup"
+            className="block w-full rounded-lg bg-brand-500 py-3 text-center text-sm font-semibold text-white hover:bg-brand-600 transition"
+          >
+            Start Free — No Card Needed
+          </Link>
+        </div>
+      )}
+
+      {/* Exit Intent Popup */}
+      {showExitPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-2xl">
+            <button
+              onClick={() => { setShowExitPopup(false); setExitDismissed(true); }}
+              className="absolute right-4 top-4 text-[var(--muted)] hover:text-white transition text-lg"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            <div className="mb-4 text-4xl">👋</div>
+            <h3 className="mb-2 text-xl font-bold">Wait — before you go!</h3>
+            <p className="mb-6 text-sm text-[var(--muted)]">
+              CreatorCRM is free for up to 25 fans. No credit card, no catch. Try it for 2 minutes and see if it helps.
+            </p>
+            <Link
+              href="/signup"
+              onClick={() => { setShowExitPopup(false); setExitDismissed(true); }}
+              className="inline-block rounded-lg bg-brand-500 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-600 transition"
+            >
+              Try It Free
+            </Link>
+            <button
+              onClick={() => { setShowExitPopup(false); setExitDismissed(true); }}
+              className="mt-4 block w-full text-xs text-[var(--muted)] hover:text-white transition"
+            >
+              No thanks, I&apos;ll pass
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
