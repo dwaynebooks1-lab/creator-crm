@@ -38,6 +38,26 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+    case "customer.subscription.updated": {
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = sub.customer as string;
+      const status = sub.status;
+
+      if (status === "active" || status === "trialing") {
+        await supabase
+          .from("creators")
+          .update({ plan: "pro" })
+          .eq("stripe_customer_id", customerId);
+      } else if (status === "past_due" || status === "unpaid") {
+        // Keep pro for now — Stripe retries payment
+      } else if (status === "canceled" || status === "incomplete_expired") {
+        await supabase
+          .from("creators")
+          .update({ plan: "free" })
+          .eq("stripe_customer_id", customerId);
+      }
+      break;
+    }
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
@@ -46,6 +66,25 @@ export async function POST(req: NextRequest) {
         .from("creators")
         .update({ plan: "free" })
         .eq("stripe_customer_id", customerId);
+      break;
+    }
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId = invoice.customer as string;
+      // Log failed payment — could trigger an email notification in the future
+      console.log(`Payment failed for customer ${customerId}, invoice ${invoice.id}`);
+      break;
+    }
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId = invoice.customer as string;
+      // Ensure pro status on successful payment (covers reactivation)
+      if (typeof customerId === "string") {
+        await supabase
+          .from("creators")
+          .update({ plan: "pro" })
+          .eq("stripe_customer_id", customerId);
+      }
       break;
     }
   }

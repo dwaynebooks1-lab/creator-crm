@@ -34,7 +34,7 @@ const FAQ = [
   },
   {
     q: "Can I export my data?",
-    a: "Yes, Pro users can export all fan data as a CSV file at any time from the dashboard or Settings page. Your data belongs to you.",
+    a: "Yes! Pro users can export fan data as CSV from the dashboard. Everyone can download a full data export (JSON) from Settings → Your Data. Your data belongs to you.",
   },
   {
     q: "How do I cancel my subscription?",
@@ -95,6 +95,8 @@ export default function Help() {
           <h2 className="text-2xl font-bold mb-6">What&apos;s New</h2>
           <div className="space-y-4">
             {[
+              { date: "Nov 2026", title: "Security & Data Export", desc: "Security headers on all pages, full data export from Settings, loading skeletons across the app, and an error boundary for reliability." },
+              { date: "Nov 2026", title: "Email Capture & Lead System", desc: "Not ready to sign up? Drop your email on the landing page to get creator tips and product updates." },
               { date: "Nov 2026", title: "Annual Pricing & Landing Page", desc: "Save $99/year with the new annual plan ($249/year vs $348 monthly). Plus a redesigned landing page with comparison table and better testimonials." },
               { date: "Nov 2026", title: "Platform Tracking & Weekly Digest", desc: "Track which platform each fan comes from (OnlyFans, Fansly, Patreon, Twitch, etc.). Plus a weekly digest API for insights." },
               { date: "Nov 2026", title: "Upgrade Celebration", desc: "New Pro subscribers get a confetti celebration when they upgrade. Because you deserve it!" },
