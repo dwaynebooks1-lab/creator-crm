@@ -2765,28 +2765,77 @@ export default function Dashboard() {
                 const cs = churnScore(selected);
                 const daysMsg = selected.last_message_at ? Math.floor((Date.now() - new Date(selected.last_message_at).getTime()) / 86400000) : null;
                 const daysRenewal = selected.renewal_date ? Math.floor((new Date(selected.renewal_date).getTime() - Date.now()) / 86400000) : null;
+                const spent = selected.total_spent || 0;
+
+                const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+                const highChurn = [
+                  `hey ${firstName} 💕 haven't heard from u in a bit, miss talking to u! got some new stuff coming that i think you'd really like.. wanna see? 👀`,
+                  `${firstName}!! where have u been 😩 i miss u fr. i just dropped something i think you'd love, wanna check it out?`,
+                  `hey ${firstName} 🥺 it's been a minute! just wanted to say i've been thinking about u. got something special coming up, wanna be first to see?`,
+                  `hiii ${firstName}! i noticed u haven't been around much and i miss our chats 💗 everything okay? i'd love to catch up`,
+                  `${firstName} heyy 💫 it's been too quiet without u lol. i've got some exclusive stuff dropping soon, thought of u first`,
+                ];
+
+                const renewal = [
+                  `hey ${firstName} 💗 just wanted to say thank u so much for being here, it means everything. ur renewal's coming up and i have some really good stuff planned for u 😘`,
+                  `${firstName}!! ur renewal is soon and i just wanna say i appreciate u sm 🥹 anything specific u wanna see? i gotchu`,
+                  `hiii ${firstName} 💕 tysm for sticking around, u literally make my day. got some fire content coming ur way, stay tuned babe 🔥`,
+                  `hey ${firstName} 🫶 renewal's coming up and i wanted u to know i see u and appreciate u! got any requests? i wanna spoil u a lil`,
+                ];
+
+                const whale = [
+                  `${firstName} 😍 u are literally one of my fav people here and i just had to tell u. ur support means the world to me 💎 got something exclusive just for my top supporters, want in?`,
+                  `hey ${firstName}!! just thinking about how grateful i am for u 🥹💗 u deserve something special.. i'm putting together something just for my VIPs, u interested?`,
+                  `${firstName} omg i just wanted to say ur amazing and i appreciate u so much 💕 i'm doing a little something extra for my top supporters this week, u in? 👀`,
+                  spent > 500 ? `hey ${firstName} 🫶 not everyone gets this msg but u've been such an incredible supporter. i wanna do something special just for u, any ideas? literally anything 💎` : `${firstName}!! ur literally the best 💗 i have a surprise for my top ppl coming soon and obv u made the list 😘`,
+                ];
+
+                const welcome = [
+                  `hiii ${firstName}!! welcome 🎉💕 i'm so happy u're here!! don't be shy, my dms are always open. what kind of content are u most into? i wanna make sure u love it here 🥰`,
+                  `${firstName}!! hey babe welcome 💗 tysm for subscribing, it means a lot fr. feel free to dm me anytime! what would u love to see more of?`,
+                  `omg ${firstName} hii!! so glad u found me 🫶 i love chatting w my subs so don't be a stranger okay? lmk if there's anything specific u wanna see!`,
+                  `welcome ${firstName}!! 🥳💕 i always like to personally say hi to new ppl. what made u subscribe? i'd love to get to know u!`,
+                ];
+
+                const reEngage = [
+                  `hey ${firstName}! it's been a min since we talked, how are u? 💕 i posted some new stuff i think u'd really like, check it out when u get a chance!`,
+                  `${firstName} hiii 👋 just checking in on u! hope everything's good. been posting a lot lately, would love to hear what u think 💗`,
+                  `heyy ${firstName}! miss chatting w u 🥺 what have u been up to? i've got some new content i think is right up ur alley`,
+                  `${firstName}! hey babe, been thinking about u 💫 how's ur week going? i dropped some stuff recently that i'm really proud of, lmk what u think!`,
+                ];
+
+                const casual = [
+                  `hey ${firstName} 💕 just wanted to check in and say hi! how's ur day going? anything fun happening?`,
+                  `${firstName}!! hiii 😊 what's good? just thinking about u and wanted to say hey 💗`,
+                  `heyy ${firstName} 🫶 hope ur having an amazing day! just popping in to say hi and that i appreciate u being here`,
+                  `${firstName} hey babe! 💫 how are u doing? i love hearing from u, tell me something good!`,
+                  `hiii ${firstName}! just wanted to drop in and say ur awesome 💕 anything on ur mind?`,
+                ];
+
                 let script = "";
-                if (cs >= 60) {
-                  script = `Hey ${firstName}! I've been thinking about you and I miss chatting. I know it's been a minute, but I've got some exclusive content dropping soon that I think you'll love. Would love to reconnect! What would make your day? 💕`;
-                } else if (daysRenewal !== null && daysRenewal >= 0 && daysRenewal <= 3) {
-                  script = `Hey ${firstName}! Your renewal is right around the corner and I wanted to personally thank you for being here. I've got some amazing things planned and I'd love for you to be part of it. Any special requests? I want to make sure you're getting exactly what you want! 😘`;
-                } else if (selected.tag === "whale") {
-                  script = `Hey ${firstName}! I just wanted to tell you that you're literally one of my favorite people here. Your support means the world to me! 💎 I'm working on something exclusive just for my top supporters — want a sneak peek? ✨`;
-                } else if (daysMsg === null) {
-                  script = `Hey ${firstName}! Welcome! I'm so glad you're here 🎉 I love getting to know my subscribers, so don't be shy — DM me anytime! Is there anything special you'd like to see? I'm all ears! 💕`;
-                } else if (daysMsg > 7) {
-                  script = `Hey ${firstName}! It's been a little while since we last chatted and I wanted to check in. How are you doing? I've been posting some new stuff I think you'd really enjoy! Would love to hear from you 😊`;
-                } else {
-                  script = `Hey ${firstName}! Just wanted to say hi and check in! You've been on my mind. Anything exciting happening? I always love hearing from you! 💬`;
-                }
+                if (cs >= 60) script = pick(highChurn);
+                else if (daysRenewal !== null && daysRenewal >= 0 && daysRenewal <= 3) script = pick(renewal);
+                else if (selected.tag === "whale") script = pick(whale);
+                else if (daysMsg === null) script = pick(welcome);
+                else if (daysMsg > 7) script = pick(reEngage);
+                else script = pick(casual);
+
                 return (
                   <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-brand-400">AI-Generated DM Script</p>
-                      <button onClick={() => { navigator.clipboard.writeText(script); setCopiedId("dm-script"); setTimeout(() => setCopiedId(""), 2000); }}
-                        className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === "dm-script" ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 hover:bg-brand-500/30"}`}>
-                        {copiedId === "dm-script" ? "Copied!" : "Copy"}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => { setSelected({ ...selected }); }}
+                          className="rounded px-2 py-0.5 text-[10px] font-medium bg-white/5 text-[var(--muted)] hover:text-white transition"
+                          title="Generate new script">
+                          Refresh
+                        </button>
+                        <button onClick={() => { navigator.clipboard.writeText(script); setCopiedId("dm-script"); setTimeout(() => setCopiedId(""), 2000); }}
+                          className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === "dm-script" ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 hover:bg-brand-500/30"}`}>
+                          {copiedId === "dm-script" ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs text-[var(--muted)] leading-relaxed">{script}</p>
                   </div>
