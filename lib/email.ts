@@ -38,6 +38,33 @@ export async function sendWelcomeEmail(to: string, name?: string) {
   });
 }
 
+export async function sendContactNotification(
+  ticket: { name: string; email: string; subject: string; message: string }
+) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return;
+
+  return getResend().emails.send({
+    from: FROM,
+    to: adminEmail,
+    subject: `[Support] ${ticket.subject} — from ${ticket.name}`,
+    replyTo: ticket.email,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New Support Ticket</h1>
+        <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;"><strong style="color: #111;">From:</strong> ${ticket.name} (${ticket.email})</p>
+          <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;"><strong style="color: #111;">Subject:</strong> ${ticket.subject}</p>
+        </div>
+        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px;">
+          <p style="font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap; margin: 0;">${ticket.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+        </div>
+        <p style="color: #9ca3af; font-size: 11px; margin-top: 24px;">Reply directly to this email to respond to ${ticket.name}.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendDigestEmail(
   to: string,
   name: string | null,

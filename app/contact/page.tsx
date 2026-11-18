@@ -33,6 +33,12 @@ export default function Contact() {
       return;
     }
 
+    fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), email: email.trim(), subject: subject.trim(), message: message.trim() }),
+    }).catch(() => {});
+
     setSent(true);
   }
 

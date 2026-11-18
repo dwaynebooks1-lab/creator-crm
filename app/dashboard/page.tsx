@@ -2498,6 +2498,38 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
+              {/* Auto-tag suggestion */}
+              {(() => {
+                const spent = selected.total_spent || 0;
+                let suggested: Tag | null = null;
+                if (spent >= 500 && selected.tag !== "whale") suggested = "whale";
+                else if (spent >= 100 && spent < 500 && selected.tag !== "vip" && selected.tag !== "whale") suggested = "vip";
+                else if (selected.last_message_at) {
+                  const daysSince = Math.floor((Date.now() - new Date(selected.last_message_at).getTime()) / 86400000);
+                  if (daysSince > 14 && selected.tag !== "at-risk") suggested = "at-risk";
+                }
+                if (!suggested) return null;
+                return (
+                  <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-brand-400">Tag suggestion</p>
+                      <p className="text-[11px] text-[var(--muted)] mt-0.5">
+                        {suggested === "whale" ? `$${spent.toLocaleString()} spent — consider tagging as Whale` :
+                         suggested === "vip" ? `$${spent.toLocaleString()} spent — consider tagging as VIP` :
+                         "No messages in 14+ days — consider tagging as At Risk"}
+                      </p>
+                    </div>
+                    <button onClick={async () => {
+                      await supabase.from("fans").update({ tag: suggested! }).eq("id", selected.id);
+                      setFans(prev => prev.map(f => f.id === selected.id ? { ...f, tag: suggested! } : f));
+                      setSelected(prev => prev ? { ...prev, tag: suggested! } : null);
+                      setToast(`${selected.name} tagged as ${TAG_LABELS[suggested!]}!`);
+                    }} className="rounded-lg bg-brand-500 px-3 py-1 text-[11px] font-medium text-white hover:bg-brand-600 transition whitespace-nowrap">
+                      Apply
+                    </button>
+                  </div>
+                );
+              })()}
               {selected.tag === "at-risk" && (
                 <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                   <p className="text-sm font-semibold text-red-300">Action Needed</p>
