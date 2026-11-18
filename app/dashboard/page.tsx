@@ -417,9 +417,17 @@ export default function Dashboard() {
   }
 
   async function handleUpgrade() {
-    const res = await fetch("/api/checkout", { method: "POST" });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setToast("Checkout error: " + (data.error || "Unknown error"));
+      }
+    } catch (err) {
+      setToast("Failed to start checkout. Please try again.");
+    }
   }
 
   const totalRevenue = fans.reduce((s, f) => s + (f.total_spent || 0), 0);

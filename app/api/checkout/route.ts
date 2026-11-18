@@ -27,14 +27,18 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get("origin") || process.env.NEXTAUTH_URL || "http://localhost:3000";
 
-  const stripe = getStripe();
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/dashboard?upgraded=true`,
-    cancel_url: `${origin}/dashboard`,
-    ...(customerEmail && { customer_email: customerEmail }),
-  });
-
-  return NextResponse.json({ url: session.url });
+  try {
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${origin}/dashboard?upgraded=true`,
+      cancel_url: `${origin}/dashboard`,
+      ...(customerEmail && { customer_email: customerEmail }),
+    });
+    return NextResponse.json({ url: session.url });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown Stripe error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
