@@ -566,6 +566,34 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Data Export */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <h2 className="text-lg font-semibold mb-1">Your Data</h2>
+          <p className="text-sm text-[var(--muted)] mb-4">
+            Download all your data including fan records, notes, and account info as a JSON file.
+          </p>
+          <button
+            onClick={async () => {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session) return;
+              const res = await fetch("/api/export", {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
+              if (!res.ok) return;
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `creatorcrm-export-${new Date().toISOString().split("T")[0]}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--muted)] hover:text-white hover:border-white/30 transition"
+          >
+            Download My Data
+          </button>
+        </div>
+
         {/* Danger Zone */}
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6">
           <h2 className="text-lg font-semibold text-red-400 mb-2">Danger Zone</h2>
