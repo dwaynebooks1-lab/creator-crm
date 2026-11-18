@@ -752,6 +752,11 @@ export default function Dashboard() {
                 Upgrade
               </button>
             )}
+            {isPro && (
+              <Link href="/analytics" className="rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-400 hover:bg-brand-500/20 transition">
+                Analytics
+              </Link>
+            )}
             <Link href="/settings" className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
               Settings
             </Link>
@@ -2070,7 +2075,10 @@ export default function Dashboard() {
                   {[
                     { label: "Add Fan", icon: "+", action: () => { setShowSpotlight(false); openAddModal(); }, kbd: "N" },
                     { label: "Message Templates", icon: "✉", action: () => { setShowSpotlight(false); setShowTemplates(true); }, kbd: "T" },
-                    ...(isPro ? [{ label: "Export CSV", icon: "↓", action: () => { setShowSpotlight(false); exportCSV(); }, kbd: "" }] : []),
+                    ...(isPro ? [
+                      { label: "Export CSV", icon: "↓", action: () => { setShowSpotlight(false); exportCSV(); }, kbd: "" },
+                      { label: "Analytics", icon: "📊", action: () => { setShowSpotlight(false); router.push("/analytics"); }, kbd: "" },
+                    ] : []),
                     { label: "Settings", icon: "⚙", action: () => { setShowSpotlight(false); router.push("/settings"); }, kbd: "" },
                     { label: "Help", icon: "?", action: () => { setShowSpotlight(false); router.push("/help"); }, kbd: "" },
                   ].map((a) => (
