@@ -149,7 +149,7 @@ export default function LandingPage() {
               Start Free — No Card Needed
             </Link>
           </div>
-          <p className="mt-4 text-sm text-[var(--muted)]">Free forever for up to 25 fans. Pro starts at $20.75/mo billed annually.</p>
+          <p className="mt-4 text-sm text-[var(--muted)]">Free forever for up to 25 fans. Pro starts at $29.00/mo.</p>
         </div>
       </section>
 
