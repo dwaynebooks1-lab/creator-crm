@@ -158,6 +158,9 @@ export default function Dashboard() {
   const [segmentName, setSegmentName] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showBatchComposer, setShowBatchComposer] = useState(false);
+  const [batchMessage, setBatchMessage] = useState("");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -667,6 +670,9 @@ export default function Dashboard() {
       } else if (e.key === "t" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         setShowTemplates(true);
+      } else if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowShortcuts(true);
       } else if (e.key === "Escape") {
         setSelected(null);
         setShowAddModal(false);
@@ -676,6 +682,8 @@ export default function Dashboard() {
         setShowBulkTag(false);
         setShowSpotlight(false);
         setShowNotifications(false);
+        setShowShortcuts(false);
+        setShowBatchComposer(false);
         setConfirmDelete(null);
       }
     }
@@ -2074,12 +2082,26 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Result Count */}
+        {/* Result Count + Actions */}
         {fans.length > 0 && (
-          <p className="mt-3 text-xs text-[var(--muted)]">
-            Showing {filtered.length} of {fans.length} fans
-            {search && ` matching "${search}"`}
-          </p>
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-xs text-[var(--muted)]">
+              Showing {filtered.length} of {fans.length} fans
+              {search && ` matching "${search}"`}
+            </p>
+            <div className="flex items-center gap-2">
+              {isPro && filtered.length > 0 && (
+                <button onClick={() => { setBatchMessage(""); setShowBatchComposer(true); }}
+                  className="rounded-lg border border-brand-500/30 px-2.5 py-1 text-[10px] font-medium text-brand-400 hover:bg-brand-500/10 transition">
+                  Batch Message
+                </button>
+              )}
+              <button onClick={() => setShowShortcuts(true)}
+                className="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--muted)] hover:text-white transition" title="Keyboard shortcuts">
+                ?
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -2450,9 +2472,11 @@ export default function Dashboard() {
                     { label: "Add Fan", icon: "+", action: () => { setShowSpotlight(false); openAddModal(); }, kbd: "N" },
                     { label: "Message Templates", icon: "✉", action: () => { setShowSpotlight(false); setShowTemplates(true); }, kbd: "T" },
                     ...(isPro ? [
+                      { label: "Batch Message", icon: "📨", action: () => { setShowSpotlight(false); setBatchMessage(""); setShowBatchComposer(true); }, kbd: "" },
                       { label: "Export CSV", icon: "↓", action: () => { setShowSpotlight(false); exportCSV(); }, kbd: "" },
                       { label: "Analytics", icon: "📊", action: () => { setShowSpotlight(false); router.push("/analytics"); }, kbd: "" },
                     ] : []),
+                    { label: "Keyboard Shortcuts", icon: "⌨", action: () => { setShowSpotlight(false); setShowShortcuts(true); }, kbd: "?" },
                     { label: "Settings", icon: "⚙", action: () => { setShowSpotlight(false); router.push("/settings"); }, kbd: "" },
                     { label: "Help", icon: "?", action: () => { setShowSpotlight(false); router.push("/help"); }, kbd: "" },
                   ].map((a) => (
@@ -2595,6 +2619,94 @@ export default function Dashboard() {
                   <p className="text-xs text-[var(--muted)] leading-relaxed">{t.msg}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Help */}
+      {showShortcuts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowShortcuts(false)}>
+          <div className="absolute inset-0 bg-black/60 animate-[fadeIn_0.2s_ease-out]" />
+          <div className="relative w-full max-w-sm rounded-xl bg-[var(--card)] border border-[var(--border)] p-6 animate-[scaleIn_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowShortcuts(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">&times;</button>
+            <h2 className="text-lg font-bold mb-4">Keyboard Shortcuts</h2>
+            <div className="space-y-2">
+              {[
+                { keys: ["/ ", "S"], desc: "Search fans" },
+                { keys: ["N"], desc: "Add new fan" },
+                { keys: ["T"], desc: "Open message templates" },
+                { keys: ["Cmd", "K"], desc: "Command palette" },
+                { keys: ["?"], desc: "Show this help" },
+                { keys: ["Esc"], desc: "Close any panel" },
+              ].map(shortcut => (
+                <div key={shortcut.desc} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-[var(--muted)]">{shortcut.desc}</span>
+                  <div className="flex items-center gap-1">
+                    {shortcut.keys.map((k, i) => (
+                      <span key={i}>
+                        <kbd className="rounded border border-[var(--border)] bg-white/5 px-2 py-0.5 text-xs font-mono">{k}</kbd>
+                        {i < shortcut.keys.length - 1 && <span className="text-[10px] text-[var(--muted)] mx-0.5">+</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Message Composer — Pro */}
+      {showBatchComposer && isPro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowBatchComposer(false)}>
+          <div className="absolute inset-0 bg-black/60 animate-[fadeIn_0.2s_ease-out]" />
+          <div className="relative w-full max-w-lg rounded-xl bg-[var(--card)] border border-[var(--border)] p-6 animate-[scaleIn_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowBatchComposer(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">&times;</button>
+            <h2 className="text-lg font-bold mb-2">Batch Message Composer</h2>
+            <p className="text-xs text-[var(--muted)] mb-4">
+              Write a message once, copy personalized versions for {filtered.length} fan{filtered.length !== 1 ? "s" : ""} in your current view.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm text-[var(--muted)] mb-1">
+                Message Template <span className="text-[10px]">(use {"{name}"} for fan name)</span>
+              </label>
+              <textarea
+                value={batchMessage}
+                onChange={(e) => setBatchMessage(e.target.value)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
+                rows={3}
+                placeholder="Hey {name}! Just wanted to check in..."
+              />
+            </div>
+            {batchMessage.trim() && (
+              <div className="mb-4 max-h-48 overflow-y-auto space-y-1.5">
+                <p className="text-xs font-medium text-[var(--muted)] mb-2">Preview ({Math.min(filtered.length, 5)} of {filtered.length}):</p>
+                {filtered.slice(0, 5).map(fan => (
+                  <div key={fan.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2">
+                    <span className="text-xs font-medium shrink-0">{fan.name}:</span>
+                    <span className="text-xs text-[var(--muted)] truncate">{batchMessage.replace(/\{name\}/gi, fan.name.split(" ")[0])}</span>
+                    <button onClick={() => { navigator.clipboard.writeText(batchMessage.replace(/\{name\}/gi, fan.name.split(" ")[0])); setCopiedId(fan.id); setTimeout(() => setCopiedId(""), 2000); }}
+                      className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === fan.id ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 hover:bg-brand-500/30"}`}>
+                      {copiedId === fan.id ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => {
+                if (!batchMessage.trim()) return;
+                const all = filtered.map(f => `${f.name}: ${batchMessage.replace(/\{name\}/gi, f.name.split(" ")[0])}`).join("\n\n");
+                navigator.clipboard.writeText(all);
+                setToast(`${filtered.length} personalized messages copied!`);
+                setShowBatchComposer(false);
+              }} className="flex-1 rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50" disabled={!batchMessage.trim()}>
+                Copy All {filtered.length} Messages
+              </button>
+              <button onClick={() => setShowBatchComposer(false)} className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted)] hover:text-white transition">
+                Cancel
+              </button>
             </div>
           </div>
         </div>
