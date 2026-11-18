@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit } from "@/lib/rate-limit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,6 +8,11 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+  if (!rateLimit(`reviews:${ip}`, 5, 60000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const auth = req.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,6 +32,9 @@ export async function POST(req: NextRequest) {
 
   if (!rating || !message?.trim() || rating < 1 || rating > 5) {
     return NextResponse.json({ error: "Rating (1-5) and message are required" }, { status: 400 });
+  }
+  if (message.length > 2000 || (name && name.length > 100) || (role && role.length > 100)) {
+    return NextResponse.json({ error: "Input too long" }, { status: 400 });
   }
 
   const { data: existing } = await supabase

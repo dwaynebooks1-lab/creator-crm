@@ -14,14 +14,14 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseAdmin();
   let event: Stripe.Event;
 
-  if (sig && webhookSecret) {
-    try {
-      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
-    } catch {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-    }
-  } else {
-    event = JSON.parse(body) as Stripe.Event;
+  if (!sig || !webhookSecret) {
+    return NextResponse.json({ error: "Missing signature or webhook secret" }, { status: 400 });
+  }
+
+  try {
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   switch (event.type) {

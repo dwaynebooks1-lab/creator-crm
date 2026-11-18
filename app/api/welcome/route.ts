@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const { email, name, utm_source, utm_medium, utm_campaign } = await req.json();
-    if (!email) {
-      return NextResponse.json({ error: "Email required" }, { status: 400 });
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Valid email required" }, { status: 400 });
     }
 
     await sendWelcomeEmail(email, name);

@@ -241,7 +241,8 @@ export default function Settings() {
   }
 
   async function handleUpgrade(plan: "monthly" | "annual" = "monthly") {
-    const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan }) });
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession?.access_token}` }, body: JSON.stringify({ plan }) });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   }
@@ -461,7 +462,8 @@ export default function Settings() {
                 </div>
                 <button
                   onClick={async () => {
-                    const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user?.id }) });
+                    const { data: { session: authSession } } = await supabase.auth.getSession();
+                    const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession?.access_token}` } });
                     const data = await res.json();
                     if (data.url) window.location.href = data.url;
                   }}

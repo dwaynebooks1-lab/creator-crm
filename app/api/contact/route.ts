@@ -14,6 +14,12 @@ export async function POST(req: Request) {
     if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
+    if (name.length > 200 || email.length > 254 || subject.length > 500 || message.length > 5000) {
+      return NextResponse.json({ error: "Input too long" }, { status: 400 });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+    }
 
     await sendContactNotification({ name: name.trim(), email: email.trim(), subject: subject.trim(), message: message.trim() });
 

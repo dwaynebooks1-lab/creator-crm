@@ -10,8 +10,12 @@ const admin = createClient(
 );
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -106,7 +110,6 @@ export async function GET(req: Request) {
     period: { from: weekAgo, to: new Date().toISOString() },
     creator_count: digests.length,
     emails_sent: sent.length,
-    digests,
   });
 }
 

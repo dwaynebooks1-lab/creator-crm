@@ -501,7 +501,8 @@ export default function Dashboard() {
   async function handleUpgrade(planOrEvent?: "monthly" | "annual" | React.MouseEvent) {
     const plan = planOrEvent === "monthly" || planOrEvent === "annual" ? planOrEvent : "monthly";
     try {
-      const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan }) });
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession?.access_token}` }, body: JSON.stringify({ plan }) });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;

@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const user = await verifyAdmin(req);
   if (!user) {
     return NextResponse.json(
-      { error: "Forbidden", hint: !ADMIN_EMAIL ? "ADMIN_EMAIL env var not set" : "Email mismatch" },
+      { error: "Forbidden" },
       { status: 403 }
     );
   }

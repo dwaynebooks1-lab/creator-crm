@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { email } = await req.json();
-  if (!email || !email.includes("@")) {
+  if (!email || typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Valid email required" }, { status: 400 });
   }
 

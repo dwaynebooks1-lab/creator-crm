@@ -8,8 +8,12 @@ function getResend() {
 
 const FROM = "CreatorCRM <hello@creatorcrm.net>";
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 export async function sendWelcomeEmail(to: string, name?: string) {
-  const firstName = name?.split(" ")[0] || "there";
+  const firstName = esc(name?.split(" ")[0] || "there");
 
   return getResend().emails.send({
     from: FROM,
@@ -51,14 +55,14 @@ export async function sendSignupNotification(
   return getResend().emails.send({
     from: FROM,
     to: adminEmail,
-    subject: `[New Signup] ${name || email} just joined CreatorCRM`,
+    subject: `[New Signup] ${esc(name || email)} just joined CreatorCRM`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
         <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New User Signed Up</h1>
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-          <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Name:</strong> ${name || "Not provided"}</p>
-          <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Email:</strong> ${email}</p>
-          ${source ? `<p style="font-size: 14px; color: #166534; margin: 0;"><strong>Source:</strong> ${source}</p>` : ""}
+          <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Name:</strong> ${esc(name || "Not provided")}</p>
+          <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Email:</strong> ${esc(email)}</p>
+          ${source ? `<p style="font-size: 14px; color: #166534; margin: 0;"><strong>Source:</strong> ${esc(source)}</p>` : ""}
         </div>
         <a href="https://creatorcrm.net/admin" style="display: inline-block; background: #ec4899; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600;">
           View in Admin
@@ -76,12 +80,12 @@ export async function sendLeadNotification(email: string) {
   return getResend().emails.send({
     from: FROM,
     to: adminEmail,
-    subject: `[New Lead] ${email} wants updates`,
+    subject: `[New Lead] ${esc(email)} wants updates`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
         <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New Lead Captured</h1>
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-          <p style="font-size: 14px; color: #1e40af; margin: 0;"><strong>Email:</strong> ${email}</p>
+          <p style="font-size: 14px; color: #1e40af; margin: 0;"><strong>Email:</strong> ${esc(email)}</p>
         </div>
         <p style="font-size: 13px; color: #6b7280;">They dropped their email on the landing page — interested but not ready to sign up yet.</p>
         <a href="https://creatorcrm.net/admin" style="display: inline-block; background: #ec4899; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; margin-top: 16px;">
@@ -101,19 +105,19 @@ export async function sendContactNotification(
   return getResend().emails.send({
     from: FROM,
     to: adminEmail,
-    subject: `[Support] ${ticket.subject} — from ${ticket.name}`,
+    subject: `[Support] ${esc(ticket.subject)} — from ${esc(ticket.name)}`,
     replyTo: ticket.email,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
         <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New Support Ticket</h1>
         <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-          <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;"><strong style="color: #111;">From:</strong> ${ticket.name} (${ticket.email})</p>
-          <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;"><strong style="color: #111;">Subject:</strong> ${ticket.subject}</p>
+          <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;"><strong style="color: #111;">From:</strong> ${esc(ticket.name)} (${esc(ticket.email)})</p>
+          <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;"><strong style="color: #111;">Subject:</strong> ${esc(ticket.subject)}</p>
         </div>
         <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px;">
-          <p style="font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap; margin: 0;">${ticket.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+          <p style="font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap; margin: 0;">${esc(ticket.message)}</p>
         </div>
-        <p style="color: #9ca3af; font-size: 11px; margin-top: 24px;">Reply directly to this email to respond to ${ticket.name}.</p>
+        <p style="color: #9ca3af; font-size: 11px; margin-top: 24px;">Reply directly to this email to respond to ${esc(ticket.name)}.</p>
       </div>
     `,
   });
@@ -133,7 +137,7 @@ export async function sendDigestEmail(
   },
   highlights: string[]
 ) {
-  const firstName = name?.split(" ")[0] || "there";
+  const firstName = esc(name?.split(" ")[0] || "there");
 
   const statRows = [
     { label: "Total Fans", value: String(stats.totalFans) },

@@ -211,7 +211,8 @@ export default function Analytics() {
           <h1 className="text-2xl font-bold mb-3">Analytics is a Pro Feature</h1>
           <p className="text-[var(--muted)] mb-8">Upgrade to Pro to unlock detailed revenue analytics, fan growth charts, engagement metrics, churn risk analysis, and more.</p>
           <button onClick={async () => {
-            const res = await fetch("/api/checkout", { method: "POST" });
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            const res = await fetch("/api/checkout", { method: "POST", headers: { Authorization: `Bearer ${authSession?.access_token}` } });
             const data = await res.json();
             if (data.url) window.location.href = data.url;
           }} className="rounded-lg bg-brand-500 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-600 transition">

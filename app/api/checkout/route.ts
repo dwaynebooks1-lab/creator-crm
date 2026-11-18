@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+  if (!rateLimit(`checkout:${ip}`, 5, 60000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const monthlyPriceId = process.env.STRIPE_PRICE_ID;
   const annualPriceId = process.env.STRIPE_PRICE_ID_ANNUAL;
 
@@ -12,31 +18,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
   }
 
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const token = authHeader.split(" ")[1];
+  const userClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const { data: { user }, error: authErr } = await userClient.auth.getUser(token);
+
+  if (authErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: { plan?: string } = {};
   try {
     body = await req.json();
   } catch {
-    // No body or invalid JSON — default to monthly
+    // default to monthly
   }
 
   const plan = body.plan === "annual" ? "annual" : "monthly";
   const priceId = plan === "annual" && annualPriceId ? annualPriceId : monthlyPriceId;
 
-  // Get the user's email from the auth token
-  const authHeader = req.headers.get("authorization");
-  let customerEmail: string | undefined;
-
-  if (req.cookies.get("sb-apxhyfyykjeukczbgvga-auth-token")) {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: authHeader ? { Authorization: authHeader } : {} } }
-    );
-    const { data } = await supabase.auth.getUser();
-    customerEmail = data.user?.email;
-  }
-
-  const origin = req.headers.get("origin") || process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const origin = req.headers.get("origin") || "https://creatorcrm.net";
 
   try {
     const stripe = getStripe();
@@ -45,11 +53,11 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/dashboard?upgraded=true`,
       cancel_url: `${origin}/dashboard`,
-      ...(customerEmail && { customer_email: customerEmail }),
+      customer_email: user.email,
     });
     return NextResponse.json({ url: session.url });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown Stripe error";
+    const message = err instanceof Error ? err.message : "Checkout failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
