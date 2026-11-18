@@ -1029,9 +1029,10 @@ export default function Dashboard() {
         {fans.length <= 10 && !onboardingDismissed && (() => {
           const steps = [
             { key: "fan", label: "Add your first fan", done: fans.length > 0, action: "Add Fan", onClick: () => openAddModal() },
-            { key: "msg", label: "Message a fan", done: fans.some(f => f.last_message_at), action: "Open Templates", onClick: () => setShowTemplates(true) },
+            { key: "msg", label: "Copy a message template", done: fans.some(f => f.last_message_at), action: "Open Templates", onClick: () => setShowTemplates(true) },
             { key: "goal", label: "Set a revenue goal", done: !!revenueGoal, action: "Set Goal", onClick: () => setShowGoalModal(true) },
             { key: "tag", label: "Tag a fan as VIP or Whale", done: fans.some(f => f.tag === "vip" || f.tag === "whale"), action: "Edit Fan", onClick: () => { if (fans[0]) openEditModal(fans[0]); } },
+            { key: "refer", label: "Share your referral link", done: referrals.length > 0, action: "Copy Link", onClick: () => { navigator.clipboard.writeText(`https://creatorcrm.net/signup?ref=${referralCode}`); setToast("Referral link copied!"); } },
           ];
           const done = steps.filter(s => s.done).length;
           if (done === steps.length) return null;

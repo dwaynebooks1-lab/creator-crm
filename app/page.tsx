@@ -92,6 +92,7 @@ export default function LandingPage() {
   const [showExitPopup, setShowExitPopup] = useState(false);
   const [exitDismissed, setExitDismissed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [liveStats, setLiveStats] = useState<{ creators: number; fans: number } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function LandingPage() {
       }
     });
     fetch("/api/reviews").then(r => r.json()).then(d => { if (d.reviews?.length) setReviews(d.reviews); }).catch(() => {});
+    fetch("/api/stats").then(r => r.json()).then(d => { if (d.creators > 0) setLiveStats(d); }).catch(() => {});
   }, [router]);
 
   useEffect(() => {
@@ -173,6 +175,9 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-[var(--muted)]">Free forever for up to 25 fans. Pro starts at $29.00/mo.</p>
+          {liveStats && liveStats.creators >= 3 && (
+            <p className="mt-2 text-xs text-[var(--muted)]">Trusted by {liveStats.creators.toLocaleString()}+ creators managing {liveStats.fans.toLocaleString()}+ fans</p>
+          )}
         </div>
       </section>
 
@@ -296,14 +301,29 @@ export default function LandingPage() {
       {/* Value Props */}
       <section className="border-y border-[var(--border)] bg-[var(--card)] px-4 py-10">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 text-center md:grid-cols-4">
-          <div>
-            <p className="text-2xl font-bold">2 min</p>
-            <p className="text-sm text-[var(--muted)]">setup time</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold">8</p>
-            <p className="text-sm text-[var(--muted)]">ready-made DM templates</p>
-          </div>
+          {liveStats && liveStats.creators >= 3 ? (
+            <>
+              <div>
+                <p className="text-2xl font-bold">{liveStats.creators.toLocaleString()}+</p>
+                <p className="text-sm text-[var(--muted)]">creators signed up</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{liveStats.fans.toLocaleString()}+</p>
+                <p className="text-sm text-[var(--muted)]">fans being managed</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-2xl font-bold">2 min</p>
+                <p className="text-sm text-[var(--muted)]">setup time</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">8</p>
+                <p className="text-sm text-[var(--muted)]">ready-made DM templates</p>
+              </div>
+            </>
+          )}
           <div>
             <p className="text-2xl font-bold">$0</p>
             <p className="text-sm text-[var(--muted)]">to start — free up to 25 fans</p>
