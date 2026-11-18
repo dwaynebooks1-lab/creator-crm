@@ -24,6 +24,12 @@ export default function Login() {
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) router.replace("/dashboard");
+    });
+  }, [router]);
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem("crm_remember_email");
       if (saved) {
