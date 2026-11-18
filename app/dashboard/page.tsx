@@ -1006,10 +1006,10 @@ export default function Dashboard() {
         {/* Onboarding Checklist */}
         {fans.length <= 10 && !onboardingDismissed && (() => {
           const steps = [
-            { key: "fan", label: "Add your first fan", done: fans.length > 0 },
-            { key: "msg", label: "Message a fan", done: fans.some(f => f.last_message_at) },
-            { key: "goal", label: "Set a revenue goal", done: !!revenueGoal },
-            { key: "tag", label: "Tag a fan as VIP or Whale", done: fans.some(f => f.tag === "vip" || f.tag === "whale") },
+            { key: "fan", label: "Add your first fan", done: fans.length > 0, action: "Add Fan", onClick: () => openAddModal() },
+            { key: "msg", label: "Message a fan", done: fans.some(f => f.last_message_at), action: "Open Templates", onClick: () => setShowTemplates(true) },
+            { key: "goal", label: "Set a revenue goal", done: !!revenueGoal, action: "Set Goal", onClick: () => setShowGoalModal(true) },
+            { key: "tag", label: "Tag a fan as VIP or Whale", done: fans.some(f => f.tag === "vip" || f.tag === "whale"), action: "Edit Fan", onClick: () => { if (fans[0]) openEditModal(fans[0]); } },
           ];
           const done = steps.filter(s => s.done).length;
           if (done === steps.length) return null;
@@ -1017,8 +1017,11 @@ export default function Dashboard() {
             <div className="mb-6 rounded-xl border border-brand-500/30 bg-gradient-to-r from-brand-500/10 to-transparent p-5">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-semibold">Getting Started</h3>
-                  <p className="text-xs text-[var(--muted)]">{done}/{steps.length} complete</p>
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    Quick Start Guide
+                    <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2 py-0.5 text-[10px] font-medium text-brand-400">{done}/{steps.length}</span>
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] mt-0.5">Complete these steps to get the most out of CreatorCRM</p>
                 </div>
                 <button onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem("crm_onboarding_done", "1"); } catch {} }}
                   className="text-xs text-[var(--muted)] hover:text-white transition">Dismiss</button>
@@ -1026,16 +1029,27 @@ export default function Dashboard() {
               <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-4">
                 <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${(done / steps.length) * 100}%` }} />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {steps.map(s => (
-                  <div key={s.key} className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs transition ${s.done ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-[var(--border)] text-[var(--muted)]"}`}>
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${s.done ? "bg-green-500/20 text-green-400" : "bg-white/5"}`}>
-                      {s.done ? "✓" : "○"}
-                    </span>
-                    <span className={s.done ? "line-through opacity-60" : ""}>{s.label}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {steps.map((s, i) => (
+                  <div key={s.key} className={`flex items-center justify-between gap-2 rounded-lg border p-3 text-xs transition ${s.done ? "border-green-500/30 bg-green-500/5" : "border-[var(--border)] bg-[var(--bg)]"}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${s.done ? "bg-green-500/20 text-green-400" : "bg-brand-500/20 text-brand-400"}`}>
+                        {s.done ? "✓" : i + 1}
+                      </span>
+                      <span className={s.done ? "text-green-400 line-through opacity-60" : ""}>{s.label}</span>
+                    </div>
+                    {!s.done && (
+                      <button onClick={s.onClick}
+                        className="rounded-md bg-brand-500 px-2.5 py-1 text-[10px] font-medium text-white hover:bg-brand-600 transition whitespace-nowrap shrink-0">
+                        {s.action}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
+              {done >= 3 && (
+                <p className="mt-3 text-center text-[10px] text-brand-400 font-medium">Almost there! One more step to go.</p>
+              )}
             </div>
           );
         })()}

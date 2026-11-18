@@ -153,22 +153,120 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Demo Video */}
-      <section className="px-4 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="mb-3 text-2xl font-bold sm:text-3xl">See CreatorCRM in action</h2>
-          <p className="mb-8 text-sm text-[var(--muted)]">Watch how creators use CreatorCRM to save subscribers and grow revenue in under 2 minutes.</p>
-          <div className="relative mx-auto aspect-video max-w-2xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/20 border border-brand-500/30">
-                <svg className="h-8 w-8 text-brand-400 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-[var(--muted)]">Demo video coming soon</p>
+      {/* Product Showcase */}
+      <section className="px-4 py-16 overflow-hidden">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl">See what&apos;s inside</h2>
+          <p className="mb-10 text-center text-sm text-[var(--muted)]">A real look at the dashboard creators use every day to save fans and grow revenue.</p>
+
+          {/* Screenshot 1: Dashboard Overview */}
+          <div className="mb-12 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-2xl shadow-brand-500/5">
+            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[var(--border)]">
+              <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+              <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
+              <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
+              <span className="ml-2 text-[10px] text-[var(--muted)]">CreatorCRM — Dashboard</span>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent opacity-50" />
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {[
+                  { label: "Total Fans", value: "247", accent: "" },
+                  { label: "Total Revenue", value: "$18,420", accent: "" },
+                  { label: "At Risk", value: "3", accent: "text-red-400" },
+                  { label: "Renewals ≤3d", value: "8", accent: "text-amber-400" },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[10px] text-[var(--muted)]">{s.label}</p>
+                    <p className={`text-lg font-bold ${s.accent}`}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
+                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-3 py-2 text-[10px] font-medium text-[var(--muted)] border-b border-[var(--border)]">
+                  <span>Fan</span><span>Tag</span><span className="hidden sm:block">Spent</span><span>Renewal</span>
+                </div>
+                {[
+                  { name: "Alex T.", tag: "Whale", tagColor: "bg-purple-500/20 text-purple-300", spent: "$2,340", renewal: "2 days" },
+                  { name: "Sam K.", tag: "VIP", tagColor: "bg-amber-500/20 text-amber-300", spent: "$890", renewal: "5 days" },
+                  { name: "Jordan P.", tag: "At Risk", tagColor: "bg-red-500/20 text-red-300", spent: "$60", renewal: "Tomorrow!" },
+                  { name: "Riley N.", tag: "New", tagColor: "bg-green-500/20 text-green-300", spent: "$15", renewal: "28 days" },
+                ].map(f => (
+                  <div key={f.name} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-3 py-2.5 text-xs border-b border-[var(--border)] last:border-0">
+                    <span className="font-medium">{f.name}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${f.tagColor}`}>{f.tag}</span>
+                    <span className="hidden sm:block text-[var(--muted)]">{f.spent}</span>
+                    <span className="text-[var(--muted)]">{f.renewal}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+
+          {/* Two-column: Action Center + Message Templates */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Screenshot 2: Action Center */}
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-2xl shadow-brand-500/5">
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[var(--border)]">
+                <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+                <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
+                <span className="ml-2 text-[10px] text-[var(--muted)]">Action Center</span>
+              </div>
+              <div className="p-4 space-y-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/20 text-[10px] font-bold text-red-400">3</span>
+                  Fans need attention
+                </h3>
+                {[
+                  { name: "Jordan P.", reason: "Renews tomorrow!", color: "border-red-500/30 bg-red-500/5" },
+                  { name: "Alex T.", reason: "VIP — keep engaged", color: "border-amber-500/30 bg-amber-500/5" },
+                  { name: "Casey R.", reason: "No contact in 10d", color: "border-blue-500/30 bg-blue-500/5" },
+                ].map(a => (
+                  <div key={a.name} className={`rounded-lg border p-3 ${a.color}`}>
+                    <p className="text-xs font-medium">{a.name}</p>
+                    <p className="text-[10px] text-[var(--muted)] mt-0.5">{a.reason}</p>
+                    <div className="mt-2 flex gap-2">
+                      <span className="rounded bg-brand-500/80 px-2 py-0.5 text-[10px] font-medium text-white">Copy Message</span>
+                      <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] text-[var(--muted)]">View Fan</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Screenshot 3: Message Templates */}
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-2xl shadow-brand-500/5">
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[var(--border)]">
+                <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+                <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
+                <span className="ml-2 text-[10px] text-[var(--muted)]">Message Templates</span>
+              </div>
+              <div className="p-4 space-y-3">
+                <h3 className="text-sm font-semibold">Copy, paste, send</h3>
+                <p className="text-[10px] text-[var(--muted)]">8 proven templates for every situation. One click to copy.</p>
+                {[
+                  { cat: "Retention", title: "Renewal Reminder", preview: "Hey babe! Just wanted to let you know your renewal is coming up soon..." },
+                  { cat: "Win-back", title: "Win Back Lapsed Fan", preview: "Hey! I noticed you've been away for a bit and I miss you!..." },
+                  { cat: "VIP", title: "Whale Appreciation", preview: "I wanted to take a moment to tell you how much I appreciate..." },
+                  { cat: "Upsell", title: "Custom Content Offer", preview: "I'm doing something special this week — custom content for my..." },
+                ].map(t => (
+                  <div key={t.title} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium">{t.title}</span>
+                      <span className="rounded-full bg-brand-500/20 px-1.5 py-0.5 text-[9px] font-medium text-brand-400">{t.cat}</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--muted)] line-clamp-2">{t.preview}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-8 text-center text-sm text-[var(--muted)]">
+            All this for <span className="font-semibold text-white">$0/month</span> with up to 25 fans.{" "}
+            <Link href="/signup" className="text-brand-400 hover:text-brand-300 transition font-medium">Try it free →</Link>
+          </p>
         </div>
       </section>
 
@@ -506,7 +604,21 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-          <p className="mt-6 text-center text-xs text-[var(--muted)]">All plans include a 7-day free trial. Cancel anytime. No questions asked.</p>
+          {/* Trust Signals */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+            {[
+              { icon: "🔒", text: "No credit card required" },
+              { icon: "↩️", text: "7-day money-back guarantee" },
+              { icon: "✕", text: "Cancel anytime, no questions" },
+              { icon: "🛡️", text: "Encrypted & secure" },
+            ].map(t => (
+              <div key={t.text} className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5">
+                <span className="text-sm">{t.icon}</span>
+                <span className="text-xs text-[var(--muted)]">{t.text}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-center text-xs text-[var(--muted)]">All plans include a 7-day free trial. Cancel anytime. No questions asked.</p>
         </div>
       </section>
 
