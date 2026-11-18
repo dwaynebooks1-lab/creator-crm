@@ -452,7 +452,7 @@ export default function Settings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{plan === "pro" ? "Pro Plan" : "Free Plan"}</p>
-              <p className="text-sm text-[var(--muted)]">{plan === "pro" ? "$49/month — Unlimited fans" : "Up to 25 fans"}</p>
+              <p className="text-sm text-[var(--muted)]">{plan === "pro" ? "$29/month — Unlimited fans" : "Up to 25 fans"}</p>
             </div>
             {plan !== "pro" && (
               <button onClick={handleUpgrade} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
@@ -477,12 +477,56 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Data Export */}
+        <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <h2 className="text-lg font-semibold mb-1">Export Your Data</h2>
+          <p className="text-xs text-[var(--muted)] mb-4">Download all your fan data as a CSV file. Your data belongs to you.</p>
+          <button
+            onClick={async () => {
+              const { data: fans } = await supabase.from("fans").select("*").order("created_at", { ascending: false });
+              if (!fans || fans.length === 0) return;
+              const headers = ["Name", "Tag", "Total Spent", "Last Message", "Renewal Date", "Notes", "Created At"];
+              const rows = fans.map((f: { name: string; tag: string; total_spent: number; last_message_at: string | null; renewal_date: string | null; notes: string; created_at: string }) => [
+                f.name, f.tag, String(f.total_spent || 0),
+                f.last_message_at || "", f.renewal_date || "",
+                `"${(f.notes || "").replace(/"/g, '""')}"`, f.created_at || "",
+              ]);
+              const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `creatorcrm-export-${new Date().toISOString().split("T")[0]}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded-lg bg-brand-500/20 border border-brand-500/30 px-4 py-2 text-sm font-medium text-brand-400 hover:bg-brand-500/30 transition"
+          >
+            Download CSV Export
+          </button>
+        </div>
+
         {/* Danger Zone */}
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6">
           <h2 className="text-lg font-semibold text-red-400 mb-2">Danger Zone</h2>
           <p className="text-sm text-[var(--muted)] mb-4">
-            Need to delete your account? Contact support and we&apos;ll handle it for you.
+            Deleting your account will permanently remove all your data, including all fan records. This cannot be undone.
           </p>
+          <button
+            onClick={async () => {
+              const confirmed = window.confirm("Are you absolutely sure? This will permanently delete your account and ALL fan data. This cannot be undone.");
+              if (!confirmed) return;
+              const doubleConfirm = window.confirm("Last chance! Type OK in the next prompt to delete everything.");
+              if (!doubleConfirm) return;
+              await supabase.from("fans").delete().eq("creator_id", user!.id);
+              await supabase.from("creators").delete().eq("id", user!.id);
+              await supabase.auth.signOut();
+              router.push("/");
+            }}
+            className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition"
+          >
+            Delete My Account
+          </button>
         </div>
       </div>
     </div>
