@@ -2846,7 +2846,7 @@ export default function Dashboard() {
                       </div>
                       <span className="text-[10px] text-[var(--muted)]">Pick one to copy</span>
                     </div>
-                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
                       {scripts.map((s, i) => (
                         <div key={i} className={`group relative rounded-lg border p-3 transition cursor-pointer hover:border-brand-500/40 ${copiedId === `dm-${i}` ? "border-green-500/40 bg-green-500/5" : "border-[var(--border)] bg-[var(--bg)]"}`}
                           onClick={() => { navigator.clipboard.writeText(s); setCopiedId(`dm-${i}`); setTimeout(() => setCopiedId(""), 2000); }}>
@@ -2856,6 +2856,36 @@ export default function Dashboard() {
                           </span>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Custom messages section */}
+                    {customTemplates.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-brand-500/20">
+                        <p className="text-[10px] font-semibold text-brand-400 uppercase tracking-wider mb-2">Your Custom Messages</p>
+                        <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                          {customTemplates.map((t) => {
+                            const personalized = t.msg.replace(/\{name\}/gi, firstName);
+                            return (
+                              <div key={t.id} className={`group relative rounded-lg border p-3 transition cursor-pointer hover:border-brand-500/40 ${copiedId === `cust-${t.id}` ? "border-green-500/40 bg-green-500/5" : "border-[var(--border)] bg-[var(--bg)]"}`}
+                                onClick={() => { navigator.clipboard.writeText(personalized); setCopiedId(`cust-${t.id}`); setTimeout(() => setCopiedId(""), 2000); }}>
+                                <p className="text-[10px] font-medium text-white mb-0.5">{t.title}</p>
+                                <p className="text-xs text-[var(--muted)] leading-relaxed pr-12">{personalized}</p>
+                                <span className={`absolute top-2.5 right-2.5 rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === `cust-${t.id}` ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 opacity-0 group-hover:opacity-100"}`}>
+                                  {copiedId === `cust-${t.id}` ? "Copied!" : "Copy"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-3 pt-3 border-t border-brand-500/20 flex items-center justify-between">
+                      <p className="text-[10px] text-[var(--muted)]">Use <span className="text-brand-400 font-mono">{"{name}"}</span> for the fan&apos;s name</p>
+                      <button onClick={() => setShowTemplates(true)}
+                        className="rounded px-2.5 py-1 text-[10px] font-medium bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 transition">
+                        {customTemplates.length > 0 ? "Edit Templates" : "+ Create Custom"}
+                      </button>
                     </div>
                   </div>
                 );
@@ -3157,9 +3187,10 @@ export default function Dashboard() {
                       placeholder="Template name..."
                       className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition mb-2" />
                     <textarea value={newTemplateMsg} onChange={e => setNewTemplateMsg(e.target.value)}
-                      placeholder="Write your message template..."
+                      placeholder="hey {name}! just wanted to check in on u..."
                       rows={3}
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition resize-none mb-2" />
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition resize-none mb-1" />
+                    <p className="text-[10px] text-[var(--muted)] mb-2">Use <span className="text-brand-400 font-mono">{"{name}"}</span> and it&apos;ll auto-fill with each fan&apos;s name</p>
                     <div className="flex gap-2">
                       <button onClick={saveCustomTemplate} disabled={!newTemplateTitle.trim() || !newTemplateMsg.trim()}
                         className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
