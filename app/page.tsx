@@ -88,6 +88,7 @@ export default function LandingPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [leadEmail, setLeadEmail] = useState("");
   const [leadStatus, setLeadStatus] = useState<"" | "sending" | "done" | "error">("");
+  const [reviews, setReviews] = useState<Array<{ rating: number; message: string; name: string | null; role: string | null }>>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function LandingPage() {
         setCheckingAuth(false);
       }
     });
+    fetch("/api/reviews").then(r => r.json()).then(d => { if (d.reviews?.length) setReviews(d.reviews); }).catch(() => {});
   }, [router]);
 
   if (checkingAuth) {
@@ -352,6 +354,34 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Real Reviews — only shown when approved reviews exist */}
+      {reviews.length > 0 && (
+        <section className="px-4 py-16">
+          <div className="mx-auto max-w-5xl">
+            <h3 className="mb-3 text-center text-3xl font-bold">What creators are saying</h3>
+            <p className="mb-10 text-center text-[var(--muted)]">Real reviews from real CreatorCRM users</p>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {reviews.map((r, i) => (
+                <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 flex flex-col">
+                  <div className="mb-3 flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <span key={s} className={`text-sm ${s <= r.rating ? "text-amber-400" : "text-[var(--border)]"}`}>★</span>
+                    ))}
+                  </div>
+                  <p className="text-sm text-[var(--muted)] leading-relaxed mb-4 flex-1">&ldquo;{r.message}&rdquo;</p>
+                  {(r.name || r.role) && (
+                    <div>
+                      {r.name && <p className="text-sm font-semibold">{r.name}</p>}
+                      {r.role && <p className="text-xs text-[var(--muted)]">{r.role}</p>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Comparison Table */}
       <section className="px-4 py-20">

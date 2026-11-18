@@ -164,6 +164,14 @@ export default function Dashboard() {
   const [notesHistory, setNotesHistory] = useState<Record<string, Array<{ text: string; at: string }>>>({});
   const [referralCode, setReferralCode] = useState("");
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [reviewDismissed, setReviewDismissed] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [reviewName, setReviewName] = useState("");
+  const [reviewRole, setReviewRole] = useState("");
+  const [reviewSaving, setReviewSaving] = useState(false);
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -222,6 +230,8 @@ export default function Dashboard() {
           localStorage.setItem("crm_referral_code", rc);
         }
         setReferralCode(rc);
+        if (localStorage.getItem("crm_review_dismissed")) setReviewDismissed(true);
+        if (localStorage.getItem("crm_review_submitted")) setReviewSubmitted(true);
       } catch {}
 
       // Check for upgrade celebration
@@ -1174,6 +1184,134 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Review Prompt — shown for users with 5+ fans who haven't dismissed or submitted */}
+        {fans.length >= 5 && !reviewDismissed && !reviewSubmitted && !showReviewPrompt && (
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💬</span>
+              <div>
+                <h3 className="text-sm font-semibold">How&apos;s CreatorCRM working for you?</h3>
+                <p className="text-xs text-[var(--muted)] mt-0.5">Your feedback helps other creators find us. Takes 30 seconds.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowReviewPrompt(true)}
+                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap">
+                Leave a Review
+              </button>
+              <button onClick={() => { setReviewDismissed(true); try { localStorage.setItem("crm_review_dismissed", "1"); } catch {} }}
+                className="text-xs text-[var(--muted)] hover:text-white transition">
+                Not now
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Review Form Modal */}
+        {showReviewPrompt && (
+          <>
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowReviewPrompt(false)} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                {reviewSubmitted ? (
+                  <div className="text-center py-4">
+                    <div className="text-4xl mb-3">🎉</div>
+                    <h3 className="text-lg font-bold mb-2">Thank you!</h3>
+                    <p className="text-sm text-[var(--muted)]">Your review means a lot. It helps other creators discover CreatorCRM.</p>
+                    <button onClick={() => setShowReviewPrompt(false)}
+                      className="mt-4 rounded-lg bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold">Leave a Review</h3>
+                      <button onClick={() => setShowReviewPrompt(false)} className="text-[var(--muted)] hover:text-white transition text-lg">&times;</button>
+                    </div>
+
+                    {/* Star Rating */}
+                    <div className="mb-4">
+                      <label className="text-xs text-[var(--muted)] mb-2 block">Rating</label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button key={star} onClick={() => setReviewRating(star)}
+                            className={`text-2xl transition ${star <= reviewRating ? "text-amber-400" : "text-[var(--border)] hover:text-amber-400/50"}`}>
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Message */}
+                    <div className="mb-4">
+                      <label className="text-xs text-[var(--muted)] mb-1.5 block">What do you like about CreatorCRM?</label>
+                      <textarea
+                        value={reviewMessage}
+                        onChange={e => setReviewMessage(e.target.value)}
+                        placeholder="e.g. The action center saves me so much time..."
+                        rows={3}
+                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition resize-none"
+                      />
+                    </div>
+
+                    {/* Name (optional) */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="text-xs text-[var(--muted)] mb-1.5 block">Display name <span className="text-[var(--border)]">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={reviewName}
+                          onChange={e => setReviewName(e.target.value)}
+                          placeholder="e.g. Sarah M."
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-[var(--muted)] mb-1.5 block">Role <span className="text-[var(--border)]">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={reviewRole}
+                          onChange={e => setReviewRole(e.target.value)}
+                          placeholder="e.g. OnlyFans creator"
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition"
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-[var(--muted)] mb-4">Your review may be featured on our landing page. Name and role are optional.</p>
+
+                    <button
+                      onClick={async () => {
+                        if (!reviewRating || !reviewMessage.trim()) return;
+                        setReviewSaving(true);
+                        try {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          await fetch("/api/reviews", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+                            body: JSON.stringify({ rating: reviewRating, message: reviewMessage, name: reviewName, role: reviewRole }),
+                          });
+                          setReviewSubmitted(true);
+                          try { localStorage.setItem("crm_review_submitted", "1"); } catch {}
+                          setToast("Review submitted! Thank you!");
+                        } catch {
+                          setToast("Failed to submit. Please try again.");
+                        }
+                        setReviewSaving(false);
+                      }}
+                      disabled={!reviewRating || !reviewMessage.trim() || reviewSaving}
+                      className="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50"
+                    >
+                      {reviewSaving ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Welcome Card — shown when user has no fans */}
