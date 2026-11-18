@@ -153,6 +153,25 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Demo Video */}
+      <section className="px-4 py-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="mb-3 text-2xl font-bold sm:text-3xl">See CreatorCRM in action</h2>
+          <p className="mb-8 text-sm text-[var(--muted)]">Watch how creators use CreatorCRM to save subscribers and grow revenue in under 2 minutes.</p>
+          <div className="relative mx-auto aspect-video max-w-2xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/20 border border-brand-500/30">
+                <svg className="h-8 w-8 text-brand-400 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-[var(--muted)]">Demo video coming soon</p>
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent opacity-50" />
+          </div>
+        </div>
+      </section>
+
       {/* Social Proof Stats */}
       <section className="border-y border-[var(--border)] bg-[var(--card)] px-4 py-10">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 text-center md:grid-cols-4">
