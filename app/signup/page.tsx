@@ -88,7 +88,7 @@ export default function SignUp() {
     fetch("/api/welcome", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign }),
+      body: JSON.stringify({ email, name, ref: refCode, utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign }),
     }).catch(() => {});
   }
 

@@ -163,6 +163,8 @@ export default function Dashboard() {
   const [batchMessage, setBatchMessage] = useState("");
   const [notesHistory, setNotesHistory] = useState<Record<string, Array<{ text: string; at: string }>>>({});
   const [referralCode, setReferralCode] = useState("");
+  const [referrals, setReferrals] = useState<Array<{ id: string; referred_email: string; status: string; created_at: string }>>([]);
+  const [showReferrals, setShowReferrals] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
@@ -233,6 +235,15 @@ export default function Dashboard() {
         if (localStorage.getItem("crm_review_dismissed")) setReviewDismissed(true);
         if (localStorage.getItem("crm_review_submitted")) setReviewSubmitted(true);
       } catch {}
+
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        if (s?.access_token) {
+          fetch("/api/referrals", { headers: { Authorization: `Bearer ${s.access_token}` } })
+            .then(r => r.json())
+            .then(d => { if (d.referrals) setReferrals(d.referrals); })
+            .catch(() => {});
+        }
+      });
 
       // Check for upgrade celebration
       const params = new URLSearchParams(window.location.search);
@@ -1160,30 +1171,88 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Refer a Friend */}
+        {/* Referral Program */}
         {referralCode && fans.length > 0 && (
-          <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                Refer a Friend
-                <span className="rounded-full bg-green-500/20 border border-green-500/30 px-1.5 py-0.5 text-[10px] font-medium text-green-400">NEW</span>
-              </h3>
-              <p className="text-xs text-[var(--muted)] mt-0.5">Share CreatorCRM with other creators</p>
+          <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  Referral Program
+                  {referrals.length > 0 && (
+                    <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">{referrals.length}</span>
+                  )}
+                </h3>
+                <p className="text-xs text-[var(--muted)] mt-0.5">Share CreatorCRM with other creators and track your referrals</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="rounded-lg bg-white/5 border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] font-mono select-all">
+                  creatorcrm.net/signup?ref={referralCode}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://creatorcrm.net/signup?ref=${referralCode}`);
+                    setToast("Referral link copied!");
+                  }}
+                  className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap"
+                >
+                  Copy Link
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <code className="rounded-lg bg-white/5 border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] font-mono select-all">
-                creatorcrm.net/signup?ref={referralCode}
-              </code>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`https://creatorcrm.net/signup?ref=${referralCode}`);
-                  setToast("Referral link copied!");
-                }}
-                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap"
-              >
-                Copy Link
-              </button>
+
+            {/* Referral Stats */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg bg-white/5 p-3 text-center">
+                <p className="text-lg font-bold">{referrals.length}</p>
+                <p className="text-[10px] text-[var(--muted)]">Total Referrals</p>
+              </div>
+              <div className="rounded-lg bg-white/5 p-3 text-center">
+                <p className="text-lg font-bold">{referrals.filter(r => r.status === "active" || r.status === "subscribed").length}</p>
+                <p className="text-[10px] text-[var(--muted)]">Active Users</p>
+              </div>
+              <div className="rounded-lg bg-white/5 p-3 text-center">
+                <p className="text-lg font-bold">{referrals.filter(r => r.status === "subscribed").length}</p>
+                <p className="text-[10px] text-[var(--muted)]">Upgraded to Pro</p>
+              </div>
             </div>
+
+            {/* Referral List */}
+            {referrals.length > 0 ? (
+              <>
+                <button
+                  onClick={() => setShowReferrals(!showReferrals)}
+                  className="text-xs text-brand-400 hover:text-brand-300 transition mb-2"
+                >
+                  {showReferrals ? "Hide referrals" : `Show ${referrals.length} referral${referrals.length !== 1 ? "s" : ""}`}
+                </button>
+                {showReferrals && (
+                  <div className="space-y-2 mt-2">
+                    {referrals.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/20 text-brand-400 text-[10px] font-bold">
+                            {r.referred_email[0].toUpperCase()}
+                          </div>
+                          <span className="text-xs">{r.referred_email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium border ${
+                            r.status === "subscribed" ? "bg-green-500/20 border-green-500/30 text-green-400" :
+                            r.status === "active" ? "bg-blue-500/20 border-blue-500/30 text-blue-400" :
+                            "bg-white/10 border-white/20 text-[var(--muted)]"
+                          }`}>
+                            {r.status === "subscribed" ? "Pro" : r.status === "active" ? "Active" : "Signed Up"}
+                          </span>
+                          <span className="text-[10px] text-[var(--muted)]">{new Date(r.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-[var(--muted)]">No referrals yet. Share your link to get started!</p>
+            )}
           </div>
         )}
 

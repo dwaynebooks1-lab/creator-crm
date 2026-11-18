@@ -89,7 +89,13 @@ export async function GET(req: NextRequest) {
     .select("id, email, created_at")
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ creators: enriched, stats, announcements: announcements || [], tickets: tickets || [], reviews: reviews || [], leads: leads || [] });
+  // Get referrals
+  const { data: referralData } = await admin
+    .from("referrals")
+    .select("id, referrer_id, referred_email, status, created_at")
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ creators: enriched, stats, announcements: announcements || [], tickets: tickets || [], reviews: reviews || [], leads: leads || [], referrals: referralData || [] });
 }
 
 export async function POST(req: NextRequest) {

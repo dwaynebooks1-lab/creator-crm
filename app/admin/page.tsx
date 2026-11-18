@@ -63,6 +63,14 @@ interface Lead {
   created_at: string;
 }
 
+interface Referral {
+  id: string;
+  referrer_id: string;
+  referred_email: string;
+  status: string;
+  created_at: string;
+}
+
 interface Stats {
   total_users: number;
   pro_users: number;
@@ -110,6 +118,7 @@ export default function AdminDashboard() {
   // Reviews & Leads
   const [reviews, setReviews] = useState<Review[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [adminReferrals, setAdminReferrals] = useState<Referral[]>([]);
 
   // Toast
   const [toast, setToast] = useState("");
@@ -139,6 +148,7 @@ export default function AdminDashboard() {
     setTickets(data.tickets || []);
     setReviews(data.reviews || []);
     setLeads(data.leads || []);
+    setAdminReferrals(data.referrals || []);
     setLoading(false);
   }, []);
 
@@ -539,6 +549,55 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <p className="text-sm text-[var(--muted)]">No leads yet.</p>
+          )}
+        </div>
+
+        {/* Referrals */}
+        <div className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Referrals ({adminReferrals.length})</h2>
+            <div className="flex gap-3 text-xs text-[var(--muted)]">
+              <span>{adminReferrals.filter(r => r.status === "signed_up").length} signed up</span>
+              <span>{adminReferrals.filter(r => r.status === "active").length} active</span>
+              <span>{adminReferrals.filter(r => r.status === "subscribed").length} pro</span>
+            </div>
+          </div>
+          {adminReferrals.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-[var(--muted)] border-b border-[var(--border)]">
+                    <th className="pb-2 pr-4">Referred Email</th>
+                    <th className="pb-2 pr-4">Referrer</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminReferrals.map((r) => {
+                    const referrer = creators.find(c => c.id === r.referrer_id);
+                    return (
+                      <tr key={r.id} className="border-b border-[var(--border)]/50">
+                        <td className="py-2 pr-4">{r.referred_email}</td>
+                        <td className="py-2 pr-4 text-[var(--muted)]">{referrer?.email || r.referrer_id.slice(0, 8)}</td>
+                        <td className="py-2 pr-4">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium border ${
+                            r.status === "subscribed" ? "bg-green-500/20 border-green-500/30 text-green-400" :
+                            r.status === "active" ? "bg-blue-500/20 border-blue-500/30 text-blue-400" :
+                            "bg-white/10 border-white/20 text-[var(--muted)]"
+                          }`}>
+                            {r.status === "subscribed" ? "Pro" : r.status === "active" ? "Active" : "Signed Up"}
+                          </span>
+                        </td>
+                        <td className="py-2 text-[var(--muted)]">{new Date(r.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">No referrals yet.</p>
           )}
         </div>
 
