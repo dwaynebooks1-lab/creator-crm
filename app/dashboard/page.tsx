@@ -161,6 +161,8 @@ export default function Dashboard() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showBatchComposer, setShowBatchComposer] = useState(false);
   const [batchMessage, setBatchMessage] = useState("");
+  const [notesHistory, setNotesHistory] = useState<Record<string, Array<{ text: string; at: string }>>>({});
+  const [referralCode, setReferralCode] = useState("");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -211,6 +213,14 @@ export default function Dashboard() {
         if (tpl) setCustomTemplates(JSON.parse(tpl));
         const seg = localStorage.getItem("crm_saved_segments");
         if (seg) setSavedSegments(JSON.parse(seg));
+        const nh = localStorage.getItem("crm_notes_history");
+        if (nh) setNotesHistory(JSON.parse(nh));
+        let rc = localStorage.getItem("crm_referral_code");
+        if (!rc) {
+          rc = u.id.slice(0, 8);
+          localStorage.setItem("crm_referral_code", rc);
+        }
+        setReferralCode(rc);
       } catch {}
 
       // Check for upgrade celebration
@@ -490,6 +500,11 @@ export default function Dashboard() {
     return d >= 0 && d <= 3;
   }).length;
   const avgSpend = fans.length > 0 ? totalRevenue / fans.length : 0;
+
+  const messagedThisWeek = fans.filter(f => {
+    if (!f.last_message_at) return false;
+    return Date.now() - new Date(f.last_message_at).getTime() < 7 * 86400000;
+  }).length;
 
   function churnScore(fan: Fan): number {
     let score = 0;
@@ -1052,13 +1067,42 @@ export default function Dashboard() {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 sm:mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+        <div className="mb-6 sm:mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-7">
           <StatCard label="Total Fans" value={String(fans.length)} sub={isPro ? "unlimited" : `of ${FREE_FAN_LIMIT} free`} />
           <StatCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} sub="lifetime tracked" />
           <StatCard label="Avg per Fan" value={`$${Math.round(avgSpend).toLocaleString()}`} sub="avg lifetime value" />
           <StatCard label="At Risk" value={String(atRisk)} sub="need attention" accent={atRisk > 0 ? "text-red-400" : ""} />
           <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
+          <StatCard label="Messaged 7d" value={String(messagedThisWeek)} sub={`of ${fans.length} fans`} accent={messagedThisWeek > 0 ? "text-green-400" : ""} />
+          <StatCard label="Streak" value={messagingStreak > 0 ? `${messagingStreak}d` : "—"} sub={messagingStreak >= 7 ? "on fire!" : messagingStreak > 0 ? "keep going" : "message a fan"} accent={messagingStreak >= 7 ? "text-brand-400" : messagingStreak > 0 ? "text-green-400" : ""} />
         </div>
+
+        {/* Refer a Friend */}
+        {referralCode && fans.length > 0 && (
+          <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                Refer a Friend
+                <span className="rounded-full bg-green-500/20 border border-green-500/30 px-1.5 py-0.5 text-[10px] font-medium text-green-400">NEW</span>
+              </h3>
+              <p className="text-xs text-[var(--muted)] mt-0.5">Share CreatorCRM with other creators</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="rounded-lg bg-white/5 border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] font-mono select-all">
+                creatorcrm.net/signup?ref={referralCode}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://creatorcrm.net/signup?ref=${referralCode}`);
+                  setToast("Referral link copied!");
+                }}
+                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition whitespace-nowrap"
+              >
+                Copy Link
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Welcome Card — shown when user has no fans */}
         {fans.length === 0 && (
@@ -2311,6 +2355,15 @@ export default function Dashboard() {
                   onBlur={async (e) => {
                     const val = e.target.value.trim();
                     if (val !== (selected.notes || "")) {
+                      const oldNote = selected.notes || "";
+                      if (oldNote) {
+                        setNotesHistory(prev => {
+                          const fanHist = prev[selected.id] || [];
+                          const updated = { ...prev, [selected.id]: [{ text: oldNote, at: new Date().toISOString() }, ...fanHist].slice(0, 10) };
+                          try { localStorage.setItem("crm_notes_history", JSON.stringify(updated)); } catch {}
+                          return updated;
+                        });
+                      }
                       await supabase.from("fans").update({ notes: val }).eq("id", selected.id);
                       setFans(prev => prev.map(f => f.id === selected.id ? { ...f, notes: val } : f));
                       setSelected(prev => prev ? { ...prev, notes: val } : null);
@@ -2318,6 +2371,21 @@ export default function Dashboard() {
                     }
                   }}
                 />
+                {(notesHistory[selected.id] || []).length > 0 && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-[10px] text-[var(--muted)] hover:text-white transition">
+                      Previous notes ({(notesHistory[selected.id] || []).length})
+                    </summary>
+                    <div className="mt-1.5 space-y-1.5 max-h-32 overflow-y-auto">
+                      {(notesHistory[selected.id] || []).map((h, i) => (
+                        <div key={i} className="rounded bg-white/5 px-2 py-1.5">
+                          <p className="text-[10px] text-[var(--muted)]">{new Date(h.at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+                          <p className="text-[11px]">{h.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
               {/* Milestones */}
               {getMilestones(selected.total_spent || 0).length > 0 && (
@@ -2863,6 +2931,20 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Mobile FAB — Add Fan */}
+      {!showAddModal && !selected && (
+        <button
+          onClick={openAddModal}
+          disabled={atLimit}
+          className="fixed bottom-6 right-6 z-30 sm:hidden flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-500/30 hover:bg-brand-600 active:scale-95 transition disabled:opacity-50"
+          aria-label="Add fan"
+        >
+          <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+        </button>
       )}
 
       {/* Floating keyboard shortcut hint */}
