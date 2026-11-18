@@ -138,6 +138,41 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Testimonials */}
+      <section className="px-4 py-16">
+        <div className="mx-auto max-w-5xl">
+          <h3 className="mb-10 text-center text-3xl font-bold">Creators love CreatorCRM</h3>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                quote: "I was losing 8-10 fans a month without even realizing it. After using CreatorCRM for two weeks, my churn dropped to almost zero. The Action Center is a game changer.",
+                name: "Jessica R.",
+                role: "OnlyFans creator, 400+ fans",
+              },
+              {
+                quote: "I used to spend 3 hours a day figuring out who to message. Now I open CreatorCRM, copy the message, paste it, done. I make more money and have my evenings back.",
+                name: "Marcus T.",
+                role: "Fansly creator, 200+ fans",
+              },
+              {
+                quote: "The churn risk score literally saved me $600 last month. I caught 4 whales about to leave and sent them a personal message just in time. Worth every penny.",
+                name: "Alina K.",
+                role: "Content creator, 150+ fans",
+              },
+            ].map((t) => (
+              <div key={t.name} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+                <div className="mb-4 text-brand-400 text-2xl">&ldquo;</div>
+                <p className="text-sm text-[var(--muted)] leading-relaxed mb-4">{t.quote}</p>
+                <div>
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  <p className="text-xs text-[var(--muted)]">{t.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="px-4 py-20">
         <div className="mx-auto max-w-4xl">

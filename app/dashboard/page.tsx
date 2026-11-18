@@ -131,6 +131,8 @@ export default function Dashboard() {
   const [copiedId, setCopiedId] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
   const atLimit = !isPro && fans.length >= FREE_FAN_LIMIT;
@@ -171,10 +173,11 @@ export default function Dashboard() {
       setLoading(false);
       loadFans();
 
-      // Load revenue goal
+      // Load revenue goal + onboarding state
       try {
         const saved = localStorage.getItem("crm_revenue_goal");
         if (saved) setRevenueGoal(parseFloat(saved));
+        if (localStorage.getItem("crm_onboarding_done")) setOnboardingDismissed(true);
       } catch {}
 
       // Set dynamic page title
@@ -670,6 +673,43 @@ export default function Dashboard() {
             </button>
           </div>
         )}
+
+        {/* Onboarding Checklist */}
+        {fans.length <= 10 && !onboardingDismissed && (() => {
+          const steps = [
+            { key: "fan", label: "Add your first fan", done: fans.length > 0 },
+            { key: "msg", label: "Message a fan", done: fans.some(f => f.last_message_at) },
+            { key: "goal", label: "Set a revenue goal", done: !!revenueGoal },
+            { key: "tag", label: "Tag a fan as VIP or Whale", done: fans.some(f => f.tag === "vip" || f.tag === "whale") },
+          ];
+          const done = steps.filter(s => s.done).length;
+          if (done === steps.length) return null;
+          return (
+            <div className="mb-6 rounded-xl border border-brand-500/30 bg-gradient-to-r from-brand-500/10 to-transparent p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Getting Started</h3>
+                  <p className="text-xs text-[var(--muted)]">{done}/{steps.length} complete</p>
+                </div>
+                <button onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem("crm_onboarding_done", "1"); } catch {} }}
+                  className="text-xs text-[var(--muted)] hover:text-white transition">Dismiss</button>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-4">
+                <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${(done / steps.length) * 100}%` }} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {steps.map(s => (
+                  <div key={s.key} className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs transition ${s.done ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-[var(--border)] text-[var(--muted)]"}`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shrink-0 ${s.done ? "bg-green-500/20 text-green-400" : "bg-white/5"}`}>
+                      {s.done ? "✓" : "○"}
+                    </span>
+                    <span className={s.done ? "line-through opacity-60" : ""}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Personalized Greeting */}
         <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1561,6 +1601,38 @@ export default function Dashboard() {
                   <span className={`text-sm ${churnLabel(churnScore(selected)).color}`}>
                     {churnLabel(churnScore(selected)).text}
                   </span>
+                </div>
+              </div>
+              {/* Activity Timeline */}
+              <div className="rounded-lg bg-white/5 p-4">
+                <p className="text-xs text-[var(--muted)] mb-3">Activity Timeline</p>
+                <div className="relative pl-4 border-l border-[var(--border)] space-y-3">
+                  {selected.last_message_at && (
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-[var(--card)]" />
+                      <p className="text-xs font-medium">Last messaged</p>
+                      <p className="text-[11px] text-[var(--muted)]">{new Date(selected.last_message_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ({daysAgo(selected.last_message_at)})</p>
+                    </div>
+                  )}
+                  {selected.renewal_date && (
+                    <div className="relative">
+                      <div className={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[var(--card)] ${(() => { const d = Math.floor((new Date(selected.renewal_date).getTime() - Date.now()) / 86400000); return d <= 3 ? "bg-amber-500" : "bg-blue-500"; })()}`} />
+                      <p className="text-xs font-medium">Renewal {new Date(selected.renewal_date) > new Date() ? "upcoming" : "past due"}</p>
+                      <p className="text-[11px] text-[var(--muted)]">{new Date(selected.renewal_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ({daysUntil(selected.renewal_date)})</p>
+                    </div>
+                  )}
+                  <div className="relative">
+                    <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-brand-500 border-2 border-[var(--card)]" />
+                    <p className="text-xs font-medium">Tagged as {TAG_LABELS[selected.tag]}</p>
+                    <p className="text-[11px] text-[var(--muted)]">${(selected.total_spent || 0).toLocaleString()} lifetime</p>
+                  </div>
+                  {selected.created_at && (
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-[var(--muted)] border-2 border-[var(--card)]" />
+                      <p className="text-xs font-medium">Fan added</p>
+                      <p className="text-[11px] text-[var(--muted)]">{new Date(selected.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                    </div>
+                  )}
                 </div>
               </div>
               {selected.tag === "at-risk" && (
