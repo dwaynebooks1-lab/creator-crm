@@ -86,6 +86,8 @@ const HOW_IT_WORKS = [
 export default function LandingPage() {
   const [annual, setAnnual] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadStatus, setLeadStatus] = useState<"" | "sending" | "done" | "error">("");
   const router = useRouter();
 
   useEffect(() => {
@@ -518,8 +520,55 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Email Capture */}
+      <section className="px-4 py-16">
+        <div className="mx-auto max-w-xl text-center">
+          <h3 className="mb-2 text-2xl font-bold">Not ready to sign up yet?</h3>
+          <p className="mb-6 text-sm text-[var(--muted)]">Drop your email and we&apos;ll send you creator tips and product updates. No spam, unsubscribe anytime.</p>
+          {leadStatus === "done" ? (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+              You&apos;re in! We&apos;ll keep you posted.
+            </div>
+          ) : (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setLeadStatus("sending");
+                try {
+                  const res = await fetch("/api/leads", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: leadEmail }),
+                  });
+                  if (res.ok) setLeadStatus("done");
+                  else setLeadStatus("error");
+                } catch { setLeadStatus("error"); }
+              }}
+              className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+            >
+              <input
+                type="email"
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
+              />
+              <button
+                type="submit"
+                disabled={leadStatus === "sending"}
+                className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50 whitespace-nowrap"
+              >
+                {leadStatus === "sending" ? "Joining..." : "Keep Me Posted"}
+              </button>
+            </form>
+          )}
+          {leadStatus === "error" && <p className="mt-2 text-xs text-red-400">Something went wrong. Try again.</p>}
+        </div>
+      </section>
+
       {/* Final CTA */}
-      <section className="px-4 py-20 text-center">
+      <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-20 text-center">
         <div className="mx-auto max-w-2xl">
           <h3 className="mb-4 text-3xl font-bold">Stop losing fans you could save</h3>
           <p className="mb-8 text-[var(--muted)]">
