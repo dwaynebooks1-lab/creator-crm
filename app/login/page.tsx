@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
@@ -14,19 +14,35 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false);
   const router = useRouter();
 
-  // MFA state
   const [mfaStep, setMfaStep] = useState(false);
   const [factorId, setFactorId] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("crm_remember_email");
+      if (saved) {
+        setEmail(saved);
+        setRememberEmail(true);
+      }
+    } catch {}
+  }, []);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    if (rememberEmail) {
+      try { localStorage.setItem("crm_remember_email", email); } catch {}
+    } else {
+      try { localStorage.removeItem("crm_remember_email"); } catch {}
+    }
 
     const { data, error: loginError } = await supabase.auth.signInWithPassword({
       email,
@@ -39,12 +55,10 @@ export default function Login() {
       return;
     }
 
-    // Check if MFA is required
     const { data: factors } = await supabase.auth.mfa.listFactors();
     const totp = factors?.totp?.find((f) => f.status === "verified");
 
     if (totp) {
-      // MFA is enabled — need verification code
       const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: totp.id,
       });
@@ -62,7 +76,6 @@ export default function Login() {
       return;
     }
 
-    // No MFA — go straight to dashboard
     router.push("/dashboard");
   }
 
@@ -72,8 +85,8 @@ export default function Login() {
     setVerifying(true);
 
     const { error: verifyError } = await supabase.auth.mfa.verify({
-      factorId: factorId,
-      challengeId: challengeId,
+      factorId,
+      challengeId,
       code: code.trim(),
     });
 
@@ -115,31 +128,20 @@ export default function Login() {
 
             <div>
               <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                type="text" inputMode="numeric" maxLength={6}
+                value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white outline-none focus:border-brand-500"
-                placeholder="000000"
-                autoFocus
-                required
+                placeholder="000000" autoFocus required
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={verifying || code.length !== 6}
-              className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50"
-            >
+            <button type="submit" disabled={verifying || code.length !== 6}
+              className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
               {verifying ? "Verifying..." : "Verify & Log In"}
             </button>
 
-            <button
-              type="button"
-              onClick={() => { setMfaStep(false); setCode(""); setError(""); }}
-              className="w-full text-center text-sm text-[var(--muted)] hover:text-white transition"
-            >
+            <button type="button" onClick={() => { setMfaStep(false); setCode(""); setError(""); }}
+              className="w-full text-center text-sm text-[var(--muted)] hover:text-white transition">
               Back to login
             </button>
           </form>
@@ -155,7 +157,7 @@ export default function Login() {
           <Link href="/" className="text-2xl font-bold">
             Creator<span className="text-brand-500">CRM</span>
           </Link>
-          <p className="mt-2 text-[var(--muted)]">Log in to your account</p>
+          <p className="mt-2 text-lg text-[var(--muted)]">Welcome back</p>
         </div>
 
         <form onSubmit={handleLogin} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 space-y-4">
@@ -168,45 +170,44 @@ export default function Login() {
           <div>
             <label className="block text-sm text-[var(--muted)] mb-1">Email</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500"
-              placeholder="you@example.com"
-              required
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
+              placeholder="you@example.com" required
             />
           </div>
 
           <div>
-            <label className="block text-sm text-[var(--muted)] mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-[var(--muted)]">Password</label>
+              <Link href="/forgot-password" className="text-xs text-brand-400 hover:underline">Forgot?</Link>
+            </div>
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500"
-              placeholder="Your password"
-              required
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition"
+              placeholder="Your password" required
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50"
-          >
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={rememberEmail} onChange={(e) => setRememberEmail(e.target.checked)}
+              className="rounded border-[var(--border)] bg-[var(--bg)] text-brand-500 focus:ring-brand-500" />
+            <span className="text-xs text-[var(--muted)]">Remember my email</span>
+          </label>
+
+          <button type="submit" disabled={loading}
+            className="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
             {loading ? "Logging in..." : "Log In"}
           </button>
 
-          <div className="text-center space-y-2">
-            <p className="text-sm text-[var(--muted)]">
-              <Link href="/forgot-password" className="text-brand-400 hover:underline">Forgot your password?</Link>
-            </p>
-            <p className="text-sm text-[var(--muted)]">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-brand-400 hover:underline">Sign up free</Link>
-            </p>
-          </div>
+          <p className="text-center text-sm text-[var(--muted)]">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-brand-400 hover:underline">Sign up free</Link>
+          </p>
         </form>
+
+        <p className="mt-6 text-center text-xs text-[var(--muted)]">
+          Protected by 2FA &middot; Bank-level encryption
+        </p>
       </div>
     </div>
   );

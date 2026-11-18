@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, User } from "@supabase/supabase-js";
@@ -129,6 +129,7 @@ export default function Dashboard() {
   const [goalInput, setGoalInput] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const [copiedId, setCopiedId] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -507,6 +508,37 @@ export default function Dashboard() {
     return m;
   }
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
+      if (isInput) {
+        if (e.key === "Escape") (target as HTMLInputElement).blur();
+        return;
+      }
+      if (e.key === "/" || e.key === "s") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === "n" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        if (!atLimit) openAddModal();
+      } else if (e.key === "t" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowTemplates(true);
+      } else if (e.key === "Escape") {
+        setSelected(null);
+        setShowAddModal(false);
+        setShowTemplates(false);
+        setShowImportModal(false);
+        setShowGoalModal(false);
+        setShowBulkTag(false);
+        setConfirmDelete(null);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [atLimit]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -547,6 +579,11 @@ export default function Dashboard() {
             Creator<span className="text-brand-500">CRM</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
+            {actionItems.length > 0 && (
+              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white" title={`${actionItems.length} fans need attention`}>
+                {actionItems.length}
+              </span>
+            )}
             <span className="hidden text-sm text-[var(--muted)] md:inline">
               {user?.user_metadata?.name || user?.email}
             </span>
@@ -1028,12 +1065,14 @@ export default function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
+              ref={searchRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search fans..."
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] pl-10 pr-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition placeholder:text-[var(--muted)]"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] pl-10 pr-10 py-2 text-sm text-white outline-none focus:border-brand-500 transition placeholder:text-[var(--muted)]"
             />
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-block rounded border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5 text-[10px] text-[var(--muted)] font-mono">/</kbd>
           </div>
           <div className="flex flex-wrap gap-2">
             {(["all", "whale", "vip", "at-risk", "new", "regular"] as const).map((t) => (
@@ -1459,6 +1498,14 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Keyboard Shortcuts Hint */}
+      <div className="hidden sm:flex fixed bottom-4 right-4 z-30 items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[10px] text-[var(--muted)] shadow-lg">
+        <span><kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 font-mono">/</kbd> Search</span>
+        <span><kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 font-mono">N</kbd> New fan</span>
+        <span><kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 font-mono">T</kbd> Templates</span>
+        <span><kbd className="rounded border border-[var(--border)] bg-[var(--bg)] px-1 py-0.5 font-mono">Esc</kbd> Close</span>
+      </div>
 
       {/* Message Templates Modal */}
       {showTemplates && (
