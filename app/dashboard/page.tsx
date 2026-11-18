@@ -177,6 +177,9 @@ export default function Dashboard() {
         if (saved) setRevenueGoal(parseFloat(saved));
       } catch {}
 
+      // Set dynamic page title
+      document.title = `Dashboard — CreatorCRM`;
+
       // Load active announcement
       const { data: ann } = await supabase
         .from("announcements")
@@ -946,6 +949,66 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Fan of the Month Spotlight */}
+        {fans.length >= 3 && (() => {
+          const now = Date.now();
+          const monthAgo = now - 30 * 86400000;
+          const topThisMonth = [...fans]
+            .filter(f => f.last_message_at && new Date(f.last_message_at).getTime() >= monthAgo)
+            .sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0))[0];
+          if (!topThisMonth) return null;
+          return (
+            <div className="mb-6 rounded-xl border border-brand-500/30 bg-gradient-to-r from-brand-500/10 to-transparent p-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/20 border border-brand-500/30 text-xl font-bold text-brand-400 shrink-0">
+                  {topThisMonth.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] uppercase tracking-wider text-brand-400 font-semibold">Fan of the Month</span>
+                  </div>
+                  <p className="font-bold truncate">{topThisMonth.name}</p>
+                  <p className="text-xs text-[var(--muted)]">${(topThisMonth.total_spent || 0).toLocaleString()} lifetime &middot; {TAG_LABELS[topThisMonth.tag]}</p>
+                </div>
+                <button onClick={() => setSelected(topThisMonth)} className="shrink-0 rounded-lg border border-brand-500/30 px-3 py-1.5 text-xs font-medium text-brand-400 hover:bg-brand-500/20 transition">
+                  View
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Creator Tips — Pro locked */}
+        {fans.length >= 2 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock personalized creator tips and growth strategies" onUpgrade={handleUpgrade} />}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span>💡</span> Growth Tips
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+              </h3>
+              <div className="space-y-2">
+                {(() => {
+                  const tips: string[] = [];
+                  const engagement = fans.length > 0 ? weeklySummary.messaged7d / fans.length : 0;
+                  if (engagement < 0.3) tips.push("Your engagement rate is below 30%. Try messaging at least 3 fans today using the Action Center above.");
+                  if (fans.filter(f => f.tag === "at-risk").length > fans.length * 0.2) tips.push("Over 20% of your fans are tagged At-Risk. Focus on win-back messages this week — the 'Win Back' template works great.");
+                  if (fans.filter(f => !f.last_message_at).length > 0) tips.push(`${fans.filter(f => !f.last_message_at).length} fan${fans.filter(f => !f.last_message_at).length !== 1 ? "s have" : " has"} never been messaged. Send them a Welcome message to start building a relationship.`);
+                  if (fans.filter(f => f.tag === "whale").length === 0 && fans.some(f => (f.total_spent || 0) >= 500)) tips.push("You have high-spending fans that aren't tagged as Whales. Use Smart Suggestions to fix this and give them VIP treatment.");
+                  if (urgentRenewals > 0) tips.push(`${urgentRenewals} fan${urgentRenewals !== 1 ? "s renew" : " renews"} in the next 3 days. Send them a Renewal Reminder now — it takes 30 seconds.`);
+                  if (tips.length === 0) tips.push("You're doing great! Keep engaging with your fans regularly and they'll stick around longer.");
+                  return tips.slice(0, 3).map((tip, i) => (
+                    <div key={i} className="flex gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+                      <span className="shrink-0 text-brand-400 mt-0.5">→</span>
+                      <p className="text-xs text-[var(--muted)] leading-relaxed">{tip}</p>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Revenue by Tag Chart — Pro locked */}
         {fans.length >= 2 && (() => {
           const tagRevenue: Record<string, number> = {};
@@ -1267,15 +1330,25 @@ export default function Dashboard() {
       {/* Detail Drawer */}
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelected(null)}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative w-full max-w-md bg-[var(--card)] border-l border-[var(--border)] p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/60 animate-[fadeIn_0.2s_ease-out]" />
+          <div className="relative w-full max-w-md bg-[var(--card)] border-l border-[var(--border)] p-6 overflow-y-auto animate-[slideInRight_0.25s_ease-out]" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
             <h2 className="text-xl font-bold mb-1">{selected.name}</h2>
-            <span className={`inline-block rounded-full border px-2 py-0.5 text-xs mb-4 ${TAG_COLORS[selected.tag]}`}>{TAG_LABELS[selected.tag]}</span>
+            <div className="flex items-center gap-2 mb-4">
+              <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[selected.tag]}`}>{TAG_LABELS[selected.tag]}</span>
+              {(selected.total_spent || 0) > avgSpend && avgSpend > 0 && (
+                <span className="text-[10px] text-green-400">Above avg spend</span>
+              )}
+            </div>
             <div className="space-y-4 mt-4">
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Lifetime Spent</p>
                 <p className="text-lg font-bold">${(selected.total_spent || 0).toLocaleString()}</p>
+                {avgSpend > 0 && (
+                  <p className={`text-xs mt-1 ${(selected.total_spent || 0) >= avgSpend ? "text-green-400" : "text-amber-400"}`}>
+                    {(selected.total_spent || 0) >= avgSpend ? "↑" : "↓"} {Math.abs(Math.round(((selected.total_spent || 0) - avgSpend) / avgSpend * 100))}% vs avg (${Math.round(avgSpend)})
+                  </p>
+                )}
               </div>
               <div className="rounded-lg bg-white/5 p-4">
                 <p className="text-xs text-[var(--muted)] mb-1">Last Messaged</p>
@@ -1303,12 +1376,24 @@ export default function Dashboard() {
                   </p>
                 </div>
               )}
-              {selected.notes && (
-                <div className="rounded-lg bg-white/5 p-4">
-                  <p className="text-xs text-[var(--muted)] mb-1">Notes</p>
-                  <p className="text-sm">{selected.notes}</p>
-                </div>
-              )}
+              <div className="rounded-lg bg-white/5 p-4">
+                <p className="text-xs text-[var(--muted)] mb-1">Notes</p>
+                <textarea
+                  defaultValue={selected.notes || ""}
+                  placeholder="Add a note about this fan..."
+                  rows={3}
+                  className="w-full bg-transparent text-sm outline-none resize-none placeholder:text-[var(--muted)]/50"
+                  onBlur={async (e) => {
+                    const val = e.target.value.trim();
+                    if (val !== (selected.notes || "")) {
+                      await supabase.from("fans").update({ notes: val }).eq("id", selected.id);
+                      setFans(prev => prev.map(f => f.id === selected.id ? { ...f, notes: val } : f));
+                      setSelected(prev => prev ? { ...prev, notes: val } : null);
+                      setToast("Notes saved!");
+                    }
+                  }}
+                />
+              </div>
               {/* Milestones */}
               {getMilestones(selected.total_spent || 0).length > 0 && (
                 <div className="rounded-lg bg-white/5 p-4">
@@ -1373,7 +1458,7 @@ export default function Dashboard() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowAddModal(false)}>
           <div className="absolute inset-0 bg-black/60" />
-          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl bg-[var(--card)] border border-[var(--border)] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl bg-[var(--card)] border border-[var(--border)] p-6 animate-[scaleIn_0.2s_ease-out]" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
             <h2 className="text-xl font-bold mb-6">{editingFan ? "Edit Fan" : "Add New Fan"}</h2>
             <div className="space-y-4">
