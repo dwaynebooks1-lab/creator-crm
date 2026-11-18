@@ -89,6 +89,8 @@ const PRICING = [
       "Saved fan segments & filters",
       "CSV import & export",
       "Platform tracking (OF, Fansly, Patreon...)",
+      "Revenue milestones & celebrations",
+      "Fan lifetime value estimator",
       "Retention dashboard & heatmap",
       "Weekly digest & insights",
       "Priority support",

@@ -1522,6 +1522,95 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Revenue Milestones — Pro locked */}
+        {fans.length >= 1 && totalRevenue > 0 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock revenue milestone tracking and celebrations" onUpgrade={handleUpgrade} />}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <span>🏅</span> Revenue Milestones
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { amount: 500, label: "$500", icon: "🌱" },
+                  { amount: 1000, label: "$1K", icon: "⭐" },
+                  { amount: 5000, label: "$5K", icon: "🔥" },
+                  { amount: 10000, label: "$10K", icon: "💎" },
+                  { amount: 25000, label: "$25K", icon: "🚀" },
+                  { amount: 50000, label: "$50K", icon: "👑" },
+                  { amount: 100000, label: "$100K", icon: "🏆" },
+                ].map(milestone => {
+                  const pct = Math.min(100, (totalRevenue / milestone.amount) * 100);
+                  const reached = totalRevenue >= milestone.amount;
+                  return (
+                    <div key={milestone.amount}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{milestone.icon}</span>
+                          <span className={`text-sm font-medium ${reached ? "text-green-400" : ""}`}>{milestone.label}</span>
+                          {reached && <span className="text-xs text-green-400">Reached!</span>}
+                        </div>
+                        <span className="text-xs text-[var(--muted)]">
+                          {reached ? "✓" : `$${(milestone.amount - totalRevenue).toLocaleString()} to go`}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${reached ? "bg-green-500" : "bg-brand-500"}`}
+                          style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fan LTV Estimator — Pro locked */}
+        {fans.length >= 3 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock fan lifetime value predictions" onUpgrade={handleUpgrade} />}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <span>💰</span> Fan Lifetime Value Estimator
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(() => {
+                  const totalMonths = (() => {
+                    const oldest = fans.reduce((min, f) => {
+                      if (!f.created_at) return min;
+                      const t = new Date(f.created_at).getTime();
+                      return t < min ? t : min;
+                    }, Date.now());
+                    return Math.max(1, Math.round((Date.now() - oldest) / (30 * 86400000)));
+                  })();
+                  const monthlyRevPerFan = avgSpend / totalMonths;
+                  const projectedAnnualPerFan = monthlyRevPerFan * 12;
+                  const projected6mo = monthlyRevPerFan * fans.length * 6;
+                  const projected12mo = projectedAnnualPerFan * fans.length;
+
+                  return [
+                    { label: "Avg Monthly/Fan", value: `$${Math.round(monthlyRevPerFan).toLocaleString()}` },
+                    { label: "Projected Annual/Fan", value: `$${Math.round(projectedAnnualPerFan).toLocaleString()}` },
+                    { label: "6-Month Forecast", value: `$${Math.round(projected6mo).toLocaleString()}` },
+                    { label: "12-Month Forecast", value: `$${Math.round(projected12mo).toLocaleString()}` },
+                  ].map(stat => (
+                    <div key={stat.label} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-center">
+                      <p className="text-lg font-bold text-brand-400">{stat.value}</p>
+                      <p className="text-[10px] text-[var(--muted)] mt-0.5">{stat.label}</p>
+                    </div>
+                  ));
+                })()}
+              </div>
+              <p className="text-xs text-[var(--muted)] mt-3">
+                Based on current spending patterns. Grow your fan base and engagement to increase projections.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Top Fans Leaderboard + Smart Tag Suggestions — Pro locked */}
         {fans.length >= 3 && (
           <div className="relative mb-6">
