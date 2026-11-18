@@ -11,8 +11,8 @@ const admin = createClient(
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET || ""}` && !process.env.CRON_SECRET) {
-    // Allow without auth in dev, but log warning
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
