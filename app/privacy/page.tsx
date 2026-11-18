@@ -1,4 +1,10 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy — CreatorCRM",
+  description: "Privacy Policy for CreatorCRM. We never sell your data.",
+};
 
 export default function Privacy() {
   return (

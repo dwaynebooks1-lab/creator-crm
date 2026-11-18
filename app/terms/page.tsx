@@ -1,4 +1,10 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service — CreatorCRM",
+  description: "Terms of Service for CreatorCRM fan management platform.",
+};
 
 export default function Terms() {
   return (

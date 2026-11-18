@@ -58,7 +58,7 @@ export default function Image() {
           }}
         >
           <span style={{ color: "#f472b6", fontSize: 18 }}>
-            Trusted by 500+ content creators
+            The CRM built for content creators
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", marginBottom: 16 }}>

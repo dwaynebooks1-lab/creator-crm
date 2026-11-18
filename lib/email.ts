@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 let _resend: Resend | null = null;
 function getResend() {
@@ -123,7 +124,7 @@ export async function sendContactNotification(
   });
 }
 
-export async function sendNudgeEmail(to: string, name?: string | null) {
+export async function sendNudgeEmail(to: string, name?: string | null, creatorId?: string) {
   const firstName = esc(name?.split(" ")[0] || "there");
 
   return getResend().emails.send({
@@ -145,7 +146,7 @@ export async function sendNudgeEmail(to: string, name?: string | null) {
           Add Your First Fan
         </a>
         <p style="color: #9ca3af; font-size: 12px; margin-top: 32px;">
-          Not interested? No worries — we won't send this again. If you have questions, reply to this email.
+          Not interested? No worries — we won't send this again. If you have questions, reply to this email.${creatorId ? ` <a href="${unsubscribeUrl(creatorId)}" style="color: #ec4899;">Unsubscribe</a>` : ""}
         </p>
       </div>
     `,
@@ -155,6 +156,7 @@ export async function sendNudgeEmail(to: string, name?: string | null) {
 export async function sendDigestEmail(
   to: string,
   name: string | null,
+  creatorId: string,
   stats: {
     totalFans: number;
     totalRevenue: number;
@@ -210,7 +212,7 @@ export async function sendDigestEmail(
         </a>
 
         <p style="color: #9ca3af; font-size: 11px; margin-top: 32px;">
-          You're receiving this because you have a CreatorCRM account. <a href="https://creatorcrm.net/settings" style="color: #ec4899;">Manage preferences</a>
+          You're receiving this because you have a CreatorCRM account. <a href="https://creatorcrm.net/settings" style="color: #ec4899;">Manage preferences</a> · <a href="${unsubscribeUrl(creatorId)}" style="color: #ec4899;">Unsubscribe</a>
         </p>
       </div>
     `,

@@ -37,6 +37,10 @@ export default function Settings() {
   // Referral
   const [referralCode, setReferralCode] = useState("");
 
+  // Email preferences
+  const [emailDigest, setEmailDigest] = useState(true);
+  const [emailPrefLoading, setEmailPrefLoading] = useState(false);
+
   // MFA
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaEnrolling, setMfaEnrolling] = useState(false);
@@ -70,6 +74,15 @@ export default function Settings() {
         }
         setReferralCode(rc);
       } catch {}
+
+      // Load email preferences
+      const { data: { session: authSess } } = await supabase.auth.getSession();
+      if (authSess?.access_token) {
+        fetch("/api/email-preferences", { headers: { Authorization: `Bearer ${authSess.access_token}` } })
+          .then(r => r.json())
+          .then(d => { if (typeof d.email_digest === "boolean") setEmailDigest(d.email_digest); })
+          .catch(() => {});
+      }
 
       // Check MFA status
       const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -544,6 +557,44 @@ export default function Settings() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Email Preferences */}
+        <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <h2 className="text-lg font-semibold mb-1">Email Preferences</h2>
+          <p className="text-xs text-[var(--muted)] mb-4">Control which emails you receive from CreatorCRM.</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Weekly Digest</p>
+                <p className="text-xs text-[var(--muted)]">A weekly summary of your fan activity, growth, and actionable insights.</p>
+              </div>
+              <button
+                onClick={async () => {
+                  setEmailPrefLoading(true);
+                  const newVal = !emailDigest;
+                  const { data: { session: s } } = await supabase.auth.getSession();
+                  if (s?.access_token) {
+                    const res = await fetch("/api/email-preferences", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.access_token}` },
+                      body: JSON.stringify({ email_digest: newVal }),
+                    });
+                    if (res.ok) setEmailDigest(newVal);
+                  }
+                  setEmailPrefLoading(false);
+                }}
+                disabled={emailPrefLoading}
+                className={`relative h-7 w-12 rounded-full transition-colors disabled:opacity-50 ${emailDigest ? "bg-brand-500" : "bg-[var(--border)]"}`}
+                aria-label="Toggle weekly digest"
+              >
+                <span
+                  className="absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white transition-transform"
+                  style={{ transform: emailDigest ? "translateX(20px)" : "translateX(0px)" }}
+                />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Data Export */}

@@ -64,7 +64,12 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ success: true });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+  if (!rateLimit(`reviews-get:${ip}`, 30, 60000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { data, error } = await supabase
     .from("reviews")
     .select("rating, message, name, role, created_at")

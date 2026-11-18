@@ -24,13 +24,15 @@ export async function GET(req: Request) {
 
   const { data: creators } = await admin
     .from("creators")
-    .select("id, email, name, plan");
+    .select("id, email, name, plan, email_digest");
 
   if (!creators) return NextResponse.json({ error: "No creators found" }, { status: 500 });
 
   const digests = [];
 
   for (const creator of creators) {
+    if (creator.email_digest === false) continue;
+
     const { data: fans } = await admin
       .from("fans")
       .select("*")
@@ -98,7 +100,7 @@ export async function GET(req: Request) {
   for (const d of digests) {
     if (!d.email) continue;
     try {
-      await sendDigestEmail(d.email, d.name, d.stats, d.highlights);
+      await sendDigestEmail(d.email, d.name, d.creator_id, d.stats, d.highlights);
       sent.push(d.email);
     } catch (err) {
       console.error(`Failed to send digest to ${d.email}:`, err);

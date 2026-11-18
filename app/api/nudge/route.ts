@@ -53,7 +53,7 @@ export async function GET(req: Request) {
     if (!creator.email) continue;
 
     try {
-      await sendNudgeEmail(creator.email, creator.name);
+      await sendNudgeEmail(creator.email, creator.name, creator.id);
       nudged++;
     } catch (err) {
       console.error(`Failed to nudge ${creator.email}:`, err);
