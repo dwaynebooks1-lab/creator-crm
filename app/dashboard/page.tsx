@@ -2090,7 +2090,12 @@ export default function Dashboard() {
                   return (
                   <div key={fan.id} onClick={() => setSelected(fan)} className="cursor-pointer p-4 transition hover:bg-white/5 active:bg-white/10">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{fan.name}</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${TAG_COLORS[fan.tag]}`}>
+                          {fan.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="font-medium">{fan.name}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] ${cl.color}`}>{cl.text}</span>
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
@@ -2145,7 +2150,14 @@ export default function Dashboard() {
                           onChange={() => toggleBulkSelect(fan.id)}
                           className="h-3.5 w-3.5 rounded border-[var(--border)] accent-brand-500 cursor-pointer" />
                       </td>
-                      <td className="px-4 py-3 font-medium" onClick={() => setSelected(fan)}>{fan.name}</td>
+                      <td className="px-4 py-3 font-medium" onClick={() => setSelected(fan)}>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`hidden sm:flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${TAG_COLORS[fan.tag]}`}>
+                            {fan.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                          </div>
+                          <span>{fan.name}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3" onClick={() => setSelected(fan)}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
@@ -2214,7 +2226,12 @@ export default function Dashboard() {
           <div className="absolute inset-0 bg-black/60 animate-[fadeIn_0.2s_ease-out]" />
           <div className="relative w-full max-w-md bg-[var(--card)] border-l border-[var(--border)] p-6 overflow-y-auto animate-[slideInRight_0.25s_ease-out]" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
-            <h2 className="text-xl font-bold mb-1">{selected.name}</h2>
+            <div className="flex items-center gap-3 mb-1">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${TAG_COLORS[selected.tag]}`}>
+                {selected.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+              </div>
+              <h2 className="text-xl font-bold">{selected.name}</h2>
+            </div>
             <div className="flex items-center gap-2 mb-4">
               <div className="relative group">
                 <select

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendDigestEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -88,10 +89,23 @@ export async function GET(req: Request) {
     });
   }
 
+  // Send digest emails
+  const sent: string[] = [];
+  for (const d of digests) {
+    if (!d.email) continue;
+    try {
+      await sendDigestEmail(d.email, d.name, d.stats, d.highlights);
+      sent.push(d.email);
+    } catch (err) {
+      console.error(`Failed to send digest to ${d.email}:`, err);
+    }
+  }
+
   return NextResponse.json({
     generated_at: new Date().toISOString(),
     period: { from: weekAgo, to: new Date().toISOString() },
     creator_count: digests.length,
+    emails_sent: sent.length,
     digests,
   });
 }

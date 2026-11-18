@@ -71,6 +71,13 @@ export default function SignUp() {
 
     setSuccess(true);
     setLoading(false);
+
+    // Send welcome email (fire-and-forget)
+    fetch("/api/welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name }),
+    }).catch(() => {});
   }
 
   if (success) {
