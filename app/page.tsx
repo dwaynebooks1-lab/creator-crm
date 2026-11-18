@@ -275,6 +275,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[var(--muted)]">
           <p>CreatorCRM — Built for creators, by creators.</p>
           <div className="flex gap-6">
+            <Link href="/help" className="hover:text-white transition">Help</Link>
             <Link href="/terms" className="hover:text-white transition">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition">Privacy</Link>
           </div>

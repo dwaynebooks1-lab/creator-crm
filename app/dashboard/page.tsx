@@ -602,6 +602,9 @@ export default function Dashboard() {
             <Link href="/settings" className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
               Settings
             </Link>
+            <Link href="/help" className="hidden sm:inline-block rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
+              Help
+            </Link>
             <button onClick={handleLogout} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
               Log Out
             </button>
