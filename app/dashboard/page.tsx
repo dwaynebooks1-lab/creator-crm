@@ -1070,7 +1070,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-              {done >= 3 && (
+              {done === steps.length - 1 && (
                 <p className="mt-3 text-center text-[10px] text-brand-400 font-medium">Almost there! One more step to go.</p>
               )}
             </div>
