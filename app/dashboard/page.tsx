@@ -1410,6 +1410,106 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Best Time to Message + Quick Actions — Pro locked */}
+        {fans.length >= 3 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock messaging insights and quick actions" onUpgrade={handleUpgrade} />}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Best Time to Message */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <span>🕐</span> Best Time to Message
+                  <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+                </h3>
+                {(() => {
+                  const hourCounts = new Array(24).fill(0);
+                  const dayCounts = new Array(7).fill(0);
+                  fans.forEach(f => {
+                    if (f.last_message_at) {
+                      const d = new Date(f.last_message_at);
+                      hourCounts[d.getHours()]++;
+                      dayCounts[d.getDay()]++;
+                    }
+                  });
+                  const peakHour = hourCounts.indexOf(Math.max(...hourCounts));
+                  const peakDay = dayCounts.indexOf(Math.max(...dayCounts));
+                  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                  const formatHour = (h: number) => h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+                  const maxH = Math.max(...hourCounts, 1);
+                  return (
+                    <>
+                      <div className="flex gap-[2px] h-16 items-end mb-3">
+                        {hourCounts.map((c, i) => (
+                          <div key={i} className="flex-1 relative group">
+                            <div className={`w-full rounded-t-sm ${i === peakHour ? "bg-brand-500" : "bg-brand-500/30"}`}
+                              style={{ height: `${(c / maxH) * 100}%`, minHeight: c > 0 ? "2px" : 0 }}
+                              title={`${formatHour(i)}: ${c} messages`} />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[var(--muted)] mb-3">
+                        <span>12AM</span><span>6AM</span><span>12PM</span><span>6PM</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <p className="text-xs text-[var(--muted)]">Peak Hour</p>
+                          <p className="text-sm font-semibold text-brand-400">{formatHour(peakHour)}</p>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-[var(--muted)]">Peak Day</p>
+                          <p className="text-sm font-semibold text-brand-400">{dayNames[peakDay]}</p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Quick Actions */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <span>🚀</span> Quick Actions
+                  <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+                </h3>
+                <div className="space-y-2">
+                  {[
+                    { label: "Message all at-risk fans", icon: "⚠", count: fans.filter(f => f.tag === "at-risk").length,
+                      action: () => { setFilter("at-risk"); setToast("Filtered to at-risk fans"); } },
+                    { label: "Export whale data", icon: "🐋", count: fans.filter(f => f.tag === "whale").length,
+                      action: () => {
+                        const whales = fans.filter(f => f.tag === "whale");
+                        const headers = ["Name", "Spent", "Last Message", "Platform"];
+                        const rows = whales.map(f => [f.name, String(f.total_spent || 0), f.last_message_at || "", f.platform || ""]);
+                        const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a"); a.href = url; a.download = "whales-export.csv"; a.click();
+                        URL.revokeObjectURL(url);
+                        setToast("Whale data exported!");
+                      }},
+                    { label: "Mark all unmessaged", icon: "✉", count: fans.filter(f => !f.last_message_at).length,
+                      action: () => { setFilter("all"); setSearch(""); setToast(`${fans.filter(f => !f.last_message_at).length} unmessaged fans — message them now!`); } },
+                    { label: "View renewal alerts", icon: "📅", count: urgentRenewals,
+                      action: () => { setToast(`${urgentRenewals} fans renewing within 3 days`); } },
+                  ].filter(a => a.count > 0).map(qa => (
+                    <button key={qa.label} onClick={qa.action}
+                      className="w-full flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-left hover:bg-white/5 transition">
+                      <span className="text-sm">{qa.icon}</span>
+                      <span className="flex-1 text-xs">{qa.label}</span>
+                      <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2 py-0.5 text-[10px] font-medium text-brand-400">{qa.count}</span>
+                    </button>
+                  ))}
+                  {fans.filter(f => f.tag === "at-risk").length === 0 && urgentRenewals === 0 && fans.filter(f => !f.last_message_at).length === 0 && (
+                    <div className="text-center py-4">
+                      <p className="text-xs text-green-400">All caught up! No urgent actions needed.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Revenue by Tag Chart — Pro locked */}
         {fans.length >= 2 && (() => {
           const tagRevenue: Record<string, number> = {};
