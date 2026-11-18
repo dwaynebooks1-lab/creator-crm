@@ -15,6 +15,8 @@ type Tag = "whale" | "vip" | "regular" | "new" | "at-risk";
 type SortKey = "name" | "total_spent" | "renewal_date" | "last_message_at" | "tag";
 type SortDir = "asc" | "desc";
 
+type Platform = "" | "onlyfans" | "fansly" | "patreon" | "twitch" | "youtube" | "instagram" | "twitter" | "tiktok" | "other";
+
 type Fan = {
   id: string;
   name: string;
@@ -23,7 +25,20 @@ type Fan = {
   last_message_at: string | null;
   renewal_date: string | null;
   notes: string;
+  platform?: Platform;
   created_at?: string;
+};
+
+const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
+  onlyfans: { label: "OnlyFans", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+  fansly: { label: "Fansly", color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
+  patreon: { label: "Patreon", color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
+  twitch: { label: "Twitch", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+  youtube: { label: "YouTube", color: "bg-red-500/20 text-red-300 border-red-500/30" },
+  instagram: { label: "Instagram", color: "bg-pink-400/20 text-pink-200 border-pink-400/30" },
+  twitter: { label: "Twitter/X", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
+  tiktok: { label: "TikTok", color: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
+  other: { label: "Other", color: "bg-gray-500/20 text-gray-300 border-gray-500/30" },
 };
 
 type Creator = { id: string; plan: "free" | "pro" };
@@ -112,7 +127,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<Fan | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFan, setEditingFan] = useState<Fan | null>(null);
-  const [fanForm, setFanForm] = useState({ name: "", tag: "new" as Tag, total_spent: "", renewal_date: "", notes: "" });
+  const [fanForm, setFanForm] = useState({ name: "", tag: "new" as Tag, total_spent: "", renewal_date: "", notes: "", platform: "" as Platform });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Fan | null>(null);
@@ -142,6 +157,7 @@ export default function Dashboard() {
   const [showSegmentSave, setShowSegmentSave] = useState(false);
   const [segmentName, setSegmentName] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -172,10 +188,10 @@ export default function Dashboard() {
         // Seed demo fans for new users
         const today = new Date();
         const demoFans = [
-          { creator_id: u.id, name: "Alex T. (demo)", tag: "whale", total_spent: 2340, renewal_date: new Date(today.getTime() + 12 * 86400000).toISOString(), notes: "Top tipper. Loves exclusive content. Demo fan — delete anytime." },
-          { creator_id: u.id, name: "Sam K. (demo)", tag: "vip", total_spent: 890, renewal_date: new Date(today.getTime() + 5 * 86400000).toISOString(), notes: "Loyal subscriber. Demo fan — delete anytime." },
-          { creator_id: u.id, name: "Jordan P. (demo)", tag: "at-risk", total_spent: 60, renewal_date: new Date(today.getTime() + 1 * 86400000).toISOString(), notes: "No engagement in 10 days. Renewal tomorrow! Demo fan — delete anytime." },
-          { creator_id: u.id, name: "Riley N. (demo)", tag: "new", total_spent: 15, renewal_date: new Date(today.getTime() + 28 * 86400000).toISOString(), notes: "Just subscribed. Demo fan — delete anytime." },
+          { creator_id: u.id, name: "Alex T. (demo)", tag: "whale", total_spent: 2340, renewal_date: new Date(today.getTime() + 12 * 86400000).toISOString(), notes: "Top tipper. Loves exclusive content. Demo fan — delete anytime.", platform: "onlyfans" },
+          { creator_id: u.id, name: "Sam K. (demo)", tag: "vip", total_spent: 890, renewal_date: new Date(today.getTime() + 5 * 86400000).toISOString(), notes: "Loyal subscriber. Demo fan — delete anytime.", platform: "fansly" },
+          { creator_id: u.id, name: "Jordan P. (demo)", tag: "at-risk", total_spent: 60, renewal_date: new Date(today.getTime() + 1 * 86400000).toISOString(), notes: "No engagement in 10 days. Renewal tomorrow! Demo fan — delete anytime.", platform: "onlyfans" },
+          { creator_id: u.id, name: "Riley N. (demo)", tag: "new", total_spent: 15, renewal_date: new Date(today.getTime() + 28 * 86400000).toISOString(), notes: "Just subscribed. Demo fan — delete anytime.", platform: "patreon" },
         ];
         await supabase.from("fans").insert(demoFans);
       }
@@ -193,6 +209,14 @@ export default function Dashboard() {
         const seg = localStorage.getItem("crm_saved_segments");
         if (seg) setSavedSegments(JSON.parse(seg));
       } catch {}
+
+      // Check for upgrade celebration
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("upgraded") === "true") {
+        setShowCelebration(true);
+        window.history.replaceState({}, "", "/dashboard");
+        setTimeout(() => setShowCelebration(false), 6000);
+      }
 
       // Set dynamic page title
       document.title = `Dashboard — CreatorCRM`;
@@ -242,7 +266,7 @@ export default function Dashboard() {
   function openAddModal() {
     if (atLimit) return;
     setEditingFan(null);
-    setFanForm({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "" });
+    setFanForm({ name: "", tag: "new", total_spent: "", renewal_date: "", notes: "", platform: "" });
     setFormError("");
     setShowAddModal(true);
   }
@@ -254,6 +278,7 @@ export default function Dashboard() {
       total_spent: String(fan.total_spent || 0),
       renewal_date: fan.renewal_date ? fan.renewal_date.split("T")[0] : "",
       notes: fan.notes || "",
+      platform: (fan.platform || "") as Platform,
     });
     setFormError("");
     setSelected(null);
@@ -265,12 +290,13 @@ export default function Dashboard() {
     setSaving(true);
     setFormError("");
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: fanForm.name.trim(), tag: fanForm.tag,
       total_spent: parseFloat(fanForm.total_spent) || 0,
       renewal_date: fanForm.renewal_date || null,
       notes: fanForm.notes.trim(),
     };
+    if (fanForm.platform) payload.platform = fanForm.platform;
 
     let error;
     if (editingFan) {
@@ -350,10 +376,10 @@ export default function Dashboard() {
   }
 
   function exportCSV() {
-    const headers = ["Name", "Tag", "Total Spent", "Last Message", "Renewal Date", "Notes"];
+    const headers = ["Name", "Tag", "Total Spent", "Last Message", "Renewal Date", "Platform", "Notes"];
     const rows = fans.map((f) => [
       f.name, TAG_LABELS[f.tag], String(f.total_spent || 0),
-      f.last_message_at || "", f.renewal_date || "", `"${(f.notes || "").replace(/"/g, '""')}"`,
+      f.last_message_at || "", f.renewal_date || "", f.platform || "", `"${(f.notes || "").replace(/"/g, '""')}"`,
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -380,18 +406,22 @@ export default function Dashboard() {
       const tagIdx = headers.findIndex((h) => h === "tag" || h === "category" || h === "type");
       const spentIdx = headers.findIndex((h) => h.includes("spent") || h.includes("revenue") || h.includes("amount"));
       const notesIdx = headers.findIndex((h) => h === "notes" || h === "note" || h === "comments");
+      const platformIdx = headers.findIndex((h) => h === "platform" || h === "source");
 
       if (nameIdx === -1) { setFormError("CSV must have a 'Name' column"); return; }
 
       const validTags = ["whale", "vip", "regular", "new", "at-risk"];
+      const validPlatforms = ["onlyfans", "fansly", "patreon", "twitch", "youtube", "instagram", "twitter", "tiktok", "other"];
       const rows = lines.slice(1).map((line) => {
         const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
         const rawTag = tagIdx >= 0 ? cols[tagIdx]?.toLowerCase().replace(/\s+/g, "-") : "new";
+        const rawPlatform = platformIdx >= 0 ? cols[platformIdx]?.toLowerCase().replace(/\s+/g, "") : "";
         return {
           name: cols[nameIdx] || "",
           tag: (validTags.includes(rawTag) ? rawTag : "new") as Tag,
           total_spent: spentIdx >= 0 ? parseFloat(cols[spentIdx]?.replace(/[$,]/g, "")) || 0 : 0,
           notes: notesIdx >= 0 ? cols[notesIdx] || "" : "",
+          platform: validPlatforms.includes(rawPlatform) ? rawPlatform : "",
         };
       }).filter((r) => r.name.trim());
 
@@ -410,7 +440,11 @@ export default function Dashboard() {
     const toImport = importPreview.slice(0, remaining);
 
     const { error } = await supabase.from("fans").insert(
-      toImport.map((f) => ({ creator_id: user!.id, name: f.name, tag: f.tag, total_spent: f.total_spent, notes: f.notes }))
+      toImport.map((f) => {
+        const row: Record<string, unknown> = { creator_id: user!.id, name: f.name, tag: f.tag, total_spent: f.total_spent, notes: f.notes };
+        if ((f as Record<string, unknown>).platform) row.platform = (f as Record<string, unknown>).platform;
+        return row;
+      })
     );
 
     if (!error) {
@@ -723,6 +757,58 @@ export default function Dashboard() {
     <div className="min-h-screen pb-20">
       {/* Toast */}
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
+
+      {/* Upgrade Celebration */}
+      {showCelebration && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center" onClick={() => setShowCelebration(false)}>
+          {/* Confetti particles */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {Array.from({ length: 50 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-3 h-3 rounded-sm"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  backgroundColor: ["#8b5cf6", "#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#f97316"][i % 6],
+                  animation: `confettiFall ${2 + Math.random() * 3}s linear ${Math.random() * 2}s forwards`,
+                  transform: `rotate(${Math.random() * 360}deg)`,
+                  opacity: 0.8,
+                }}
+              />
+            ))}
+          </div>
+          <div className="relative z-10 rounded-2xl border border-brand-500/40 bg-[var(--card)] p-8 sm:p-12 text-center shadow-2xl animate-[scaleIn_0.4s_ease-out] max-w-md mx-4">
+            <div className="text-5xl sm:text-6xl mb-4 animate-[celebratePulse_1s_ease-in-out_infinite]">
+              🎉
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2"
+              style={{
+                background: "linear-gradient(90deg, #8b5cf6, #d946ef, #8b5cf6)",
+                backgroundSize: "200% auto",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                animation: "shimmer 2s linear infinite",
+              }}>
+              Welcome to Pro!
+            </h2>
+            <p className="text-[var(--muted)] text-sm mb-4">
+              You now have access to unlimited fans, revenue analytics, custom templates, saved segments, and all premium features.
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs mb-6">
+              {["Unlimited fans", "Revenue analytics", "Custom templates", "CSV export", "Saved segments", "Advanced charts"].map(f => (
+                <div key={f} className="flex items-center gap-1.5 rounded-lg bg-brand-500/10 border border-brand-500/20 px-2.5 py-1.5">
+                  <span className="text-green-400">✓</span>
+                  <span className="text-brand-300">{f}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowCelebration(false)}
+              className="rounded-xl bg-brand-500 px-8 py-3 text-sm font-semibold text-white hover:bg-brand-600 transition">
+              Let&apos;s Go!
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Top Nav */}
       <nav className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm px-4 py-3">
@@ -1710,9 +1796,12 @@ export default function Dashboard() {
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-[var(--muted)]">
+                    <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
                       <span>${(fan.total_spent || 0).toLocaleString()}</span>
                       <span>Renewal: {daysUntil(fan.renewal_date)}</span>
+                      {fan.platform && PLATFORM_LABELS[fan.platform] && (
+                        <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${PLATFORM_LABELS[fan.platform].color}`}>{PLATFORM_LABELS[fan.platform].label}</span>
+                      )}
                     </div>
                   </div>
                   );
@@ -1758,7 +1847,12 @@ export default function Dashboard() {
                       </td>
                       <td className="px-4 py-3 font-medium" onClick={() => setSelected(fan)}>{fan.name}</td>
                       <td className="px-4 py-3" onClick={() => setSelected(fan)}>
-                        <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[fan.tag]}`}>{TAG_LABELS[fan.tag]}</span>
+                          {fan.platform && PLATFORM_LABELS[fan.platform] && (
+                            <span className={`hidden sm:inline-block rounded-full border px-1.5 py-0.5 text-[10px] ${PLATFORM_LABELS[fan.platform].color}`}>{PLATFORM_LABELS[fan.platform].label}</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3" onClick={() => setSelected(fan)}>${(fan.total_spent || 0).toLocaleString()}</td>
                       <td className="px-4 py-3 hidden md:table-cell" onClick={() => setSelected(fan)}>
@@ -1826,6 +1920,11 @@ export default function Dashboard() {
                 </select>
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none opacity-50">▼</span>
               </div>
+              {selected.platform && PLATFORM_LABELS[selected.platform] && (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${PLATFORM_LABELS[selected.platform].color}`}>
+                  {PLATFORM_LABELS[selected.platform].label}
+                </span>
+              )}
               {(selected.total_spent || 0) > avgSpend && avgSpend > 0 && (
                 <span className="text-[10px] text-green-400">Above avg spend</span>
               )}
@@ -2017,6 +2116,22 @@ export default function Dashboard() {
                 <label className="block text-sm text-[var(--muted)] mb-1">Renewal Date</label>
                 <input type="date" value={fanForm.renewal_date} onChange={(e) => setFanForm({ ...fanForm, renewal_date: e.target.value })}
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition" />
+              </div>
+              <div>
+                <label className="block text-sm text-[var(--muted)] mb-1">Platform</label>
+                <select value={fanForm.platform} onChange={(e) => setFanForm({ ...fanForm, platform: e.target.value as Platform })}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500 transition">
+                  <option value="">Not specified</option>
+                  <option value="onlyfans">OnlyFans</option>
+                  <option value="fansly">Fansly</option>
+                  <option value="patreon">Patreon</option>
+                  <option value="twitch">Twitch</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="twitter">Twitter / X</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm text-[var(--muted)] mb-1">Notes</label>

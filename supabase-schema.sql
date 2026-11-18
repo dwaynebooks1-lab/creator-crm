@@ -20,8 +20,12 @@ create table if not exists fans (
   last_message_at timestamptz,
   renewal_date timestamptz,
   notes text default '',
+  platform text default '' check (platform in ('', 'onlyfans', 'fansly', 'patreon', 'twitch', 'youtube', 'instagram', 'twitter', 'tiktok', 'other')),
   created_at timestamptz default now()
 );
+
+-- Add platform column if table already exists (safe migration)
+-- alter table fans add column if not exists platform text default '' check (platform in ('', 'onlyfans', 'fansly', 'patreon', 'twitch', 'youtube', 'instagram', 'twitter', 'tiktok', 'other'));
 
 -- Row-level security: creators can only see their own fans
 alter table fans enable row level security;

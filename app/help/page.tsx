@@ -14,7 +14,7 @@ const FAQ = [
   },
   {
     q: "What does Pro include?",
-    a: "Pro ($29/month) gives you unlimited fan tracking, revenue analytics and charts, CSV import and export, retention dashboard, engagement heatmap, spending distribution, leaderboard, smart tag suggestions, personalized growth tips, revenue trend charts, monthly performance comparison, custom message templates, saved fan segments, and priority support.",
+    a: "Pro ($29/month) gives you unlimited fan tracking, revenue analytics and charts, CSV import and export, retention dashboard, engagement heatmap, spending distribution, leaderboard, smart tag suggestions, personalized growth tips, revenue trend charts, monthly performance comparison, custom message templates, saved fan segments, platform tracking (OnlyFans, Fansly, Patreon, etc.), weekly digest insights, and priority support.",
   },
   {
     q: "How does the churn risk score work?",
@@ -95,6 +95,8 @@ export default function Help() {
           <h2 className="text-2xl font-bold mb-6">What&apos;s New</h2>
           <div className="space-y-4">
             {[
+              { date: "Nov 2026", title: "Platform Tracking & Weekly Digest", desc: "Track which platform each fan comes from (OnlyFans, Fansly, Patreon, Twitch, etc.). Plus a weekly digest API for insights." },
+              { date: "Nov 2026", title: "Upgrade Celebration", desc: "New Pro subscribers get a confetti celebration when they upgrade. Because you deserve it!" },
               { date: "Nov 2026", title: "Revenue Trends & Performance", desc: "See your 6-month revenue trend chart and compare this month vs last month across fans, revenue, and engagement." },
               { date: "Nov 2026", title: "Custom Templates & Segments", desc: "Pro users can now create and save their own message templates and fan segments for quick filtering." },
               { date: "Nov 2026", title: "Command Palette", desc: "Press Ctrl+K (or Cmd+K on Mac) to instantly search fans, jump to actions, and navigate the dashboard like a pro." },

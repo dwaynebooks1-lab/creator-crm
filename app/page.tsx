@@ -47,6 +47,16 @@ const FEATURES = [
     title: "Saved Segments",
     desc: "Save custom filter combos like 'Whales not messaged in 7 days.' One click to load your most-used fan views.",
   },
+  {
+    icon: "🌐",
+    title: "Platform Tracking",
+    desc: "Track which platform each fan comes from — OnlyFans, Fansly, Patreon, Twitch, and more. See revenue by platform.",
+  },
+  {
+    icon: "📊",
+    title: "Weekly Digest",
+    desc: "Get a weekly summary of your fan activity, growth, engagement rate, and actionable highlights to keep you on track.",
+  },
 ];
 
 const PRICING = [
@@ -78,7 +88,9 @@ const PRICING = [
       "Custom message templates",
       "Saved fan segments & filters",
       "CSV import & export",
+      "Platform tracking (OF, Fansly, Patreon...)",
       "Retention dashboard & heatmap",
+      "Weekly digest & insights",
       "Priority support",
     ],
     cta: "Start 7-Day Free Trial",

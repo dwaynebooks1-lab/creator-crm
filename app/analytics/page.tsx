@@ -489,6 +489,47 @@ export default function Analytics() {
           </div>
         </div>
 
+        {/* Platform Breakdown */}
+        {fans.some(f => (f as Record<string, unknown>).platform) && (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+            <h2 className="text-sm font-semibold mb-4">Platform Breakdown</h2>
+            <div className="space-y-3">
+              {(() => {
+                const platformMap: Record<string, { count: number; revenue: number }> = {};
+                fans.forEach(f => {
+                  const p = ((f as Record<string, unknown>).platform as string) || "unknown";
+                  if (!platformMap[p]) platformMap[p] = { count: 0, revenue: 0 };
+                  platformMap[p].count++;
+                  platformMap[p].revenue += f.total_spent || 0;
+                });
+                const pLabels: Record<string, string> = {
+                  onlyfans: "OnlyFans", fansly: "Fansly", patreon: "Patreon", twitch: "Twitch",
+                  youtube: "YouTube", instagram: "Instagram", twitter: "Twitter/X", tiktok: "TikTok",
+                  other: "Other", unknown: "Not specified", "": "Not specified",
+                };
+                const pColors: Record<string, string> = {
+                  onlyfans: "bg-blue-500", fansly: "bg-pink-500", patreon: "bg-orange-500", twitch: "bg-purple-500",
+                  youtube: "bg-red-500", instagram: "bg-pink-400", twitter: "bg-sky-500", tiktok: "bg-teal-500",
+                  other: "bg-gray-500", unknown: "bg-gray-600", "": "bg-gray-600",
+                };
+                return Object.entries(platformMap)
+                  .sort((a, b) => b[1].revenue - a[1].revenue)
+                  .map(([p, data]) => (
+                    <div key={p}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{pLabels[p] || p}</span>
+                        <span className="text-xs text-[var(--muted)]">{data.count} fan{data.count !== 1 ? "s" : ""} · ${data.revenue.toLocaleString()}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className={`h-full rounded-full ${pColors[p] || "bg-gray-500"}`} style={{ width: `${totalRevenue > 0 ? (data.revenue / totalRevenue) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                  ));
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* Revenue Concentration */}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
           <h2 className="text-sm font-semibold mb-4">Revenue Concentration</h2>
