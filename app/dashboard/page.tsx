@@ -2767,8 +2767,6 @@ export default function Dashboard() {
                 const daysRenewal = selected.renewal_date ? Math.floor((new Date(selected.renewal_date).getTime() - Date.now()) / 86400000) : null;
                 const spent = selected.total_spent || 0;
 
-                const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-
                 const highChurn = [
                   `hey ${firstName} 💕 haven't heard from u in a bit, miss talking to u! got some new stuff coming that i think you'd really like.. wanna see? 👀`,
                   `${firstName}!! where have u been 😩 i miss u fr. i just dropped something i think you'd love, wanna check it out?`,
@@ -2813,31 +2811,35 @@ export default function Dashboard() {
                   `hiii ${firstName}! just wanted to drop in and say ur awesome 💕 anything on ur mind?`,
                 ];
 
-                let script = "";
-                if (cs >= 60) script = pick(highChurn);
-                else if (daysRenewal !== null && daysRenewal >= 0 && daysRenewal <= 3) script = pick(renewal);
-                else if (selected.tag === "whale") script = pick(whale);
-                else if (daysMsg === null) script = pick(welcome);
-                else if (daysMsg > 7) script = pick(reEngage);
-                else script = pick(casual);
+                let scripts: string[] = [];
+                let category = "";
+                if (cs >= 60) { scripts = highChurn; category = "Win-Back"; }
+                else if (daysRenewal !== null && daysRenewal >= 0 && daysRenewal <= 3) { scripts = renewal; category = "Renewal"; }
+                else if (selected.tag === "whale") { scripts = whale; category = "VIP / Whale"; }
+                else if (daysMsg === null) { scripts = welcome; category = "Welcome"; }
+                else if (daysMsg > 7) { scripts = reEngage; category = "Re-Engage"; }
+                else { scripts = casual; category = "Check-In"; }
 
                 return (
                   <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold text-brand-400">AI-Generated DM Script</p>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => { setSelected({ ...selected }); }}
-                          className="rounded px-2 py-0.5 text-[10px] font-medium bg-white/5 text-[var(--muted)] hover:text-white transition"
-                          title="Generate new script">
-                          Refresh
-                        </button>
-                        <button onClick={() => { navigator.clipboard.writeText(script); setCopiedId("dm-script"); setTimeout(() => setCopiedId(""), 2000); }}
-                          className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === "dm-script" ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 hover:bg-brand-500/30"}`}>
-                          {copiedId === "dm-script" ? "Copied!" : "Copy"}
-                        </button>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-semibold text-brand-400">DM Scripts</p>
+                        <span className="rounded-full bg-brand-500/20 px-1.5 py-0.5 text-[9px] font-medium text-brand-400">{category}</span>
                       </div>
+                      <span className="text-[10px] text-[var(--muted)]">Pick one to copy</span>
                     </div>
-                    <p className="text-xs text-[var(--muted)] leading-relaxed">{script}</p>
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {scripts.map((s, i) => (
+                        <div key={i} className={`group relative rounded-lg border p-3 transition cursor-pointer hover:border-brand-500/40 ${copiedId === `dm-${i}` ? "border-green-500/40 bg-green-500/5" : "border-[var(--border)] bg-[var(--bg)]"}`}
+                          onClick={() => { navigator.clipboard.writeText(s); setCopiedId(`dm-${i}`); setTimeout(() => setCopiedId(""), 2000); }}>
+                          <p className="text-xs text-[var(--muted)] leading-relaxed pr-12">{s}</p>
+                          <span className={`absolute top-2.5 right-2.5 rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === `dm-${i}` ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 opacity-0 group-hover:opacity-100"}`}>
+                            {copiedId === `dm-${i}` ? "Copied!" : "Copy"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
