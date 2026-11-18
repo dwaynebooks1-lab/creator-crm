@@ -42,7 +42,7 @@ const FAQ = [
   },
   {
     q: "What are keyboard shortcuts?",
-    a: "Press '/' to search, 'N' to add a new fan, 'T' to open message templates, and 'Esc' to close any panel. These work from anywhere on the dashboard.",
+    a: "Press '/' or 'S' to search fans, 'N' to add a new fan, 'T' to open message templates, Ctrl+K (or Cmd+K on Mac) for the command palette, and 'Esc' to close any panel. These work from anywhere on the dashboard.",
   },
   {
     q: "How do I delete my account?",
@@ -90,7 +90,32 @@ export default function Help() {
           ))}
         </div>
 
-        <div className="mt-12 rounded-xl border border-brand-500/30 bg-brand-500/5 p-6 text-center">
+        {/* What's New */}
+        <div className="mt-12 mb-12">
+          <h2 className="text-2xl font-bold mb-6">What&apos;s New</h2>
+          <div className="space-y-4">
+            {[
+              { date: "Nov 2026", title: "Command Palette", desc: "Press Ctrl+K (or Cmd+K on Mac) to instantly search fans, jump to actions, and navigate the dashboard like a pro." },
+              { date: "Nov 2026", title: "Live Payments", desc: "Stripe is now fully integrated. Upgrade to Pro, manage your subscription, and get instant access to premium features." },
+              { date: "Nov 2026", title: "Custom Domain", desc: "CreatorCRM is now live at creatorcrm.net with SSL, Cloudflare protection, and branded emails." },
+              { date: "Nov 2026", title: "Onboarding Checklist", desc: "New users get a guided getting-started checklist to set up their CRM in under 2 minutes." },
+              { date: "Nov 2026", title: "Fan Activity Timeline", desc: "See a complete history of interactions with each fan — messages sent, renewals, tag changes, and more." },
+              { date: "Nov 2026", title: "Audience Health Bar", desc: "Visual breakdown of your fan base by tag. See at a glance how healthy your audience is." },
+            ].map((item, i) => (
+              <div key={i} className="flex gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <div className="shrink-0">
+                  <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2.5 py-1 text-xs font-medium text-brand-400">{item.date}</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">{item.title}</h3>
+                  <p className="text-sm text-[var(--muted)]">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-brand-500/30 bg-brand-500/5 p-6 text-center">
           <h2 className="text-lg font-bold mb-2">Still need help?</h2>
           <p className="text-sm text-[var(--muted)] mb-4">
             Can&apos;t find what you&apos;re looking for? Send us a message and we&apos;ll get back to you.
