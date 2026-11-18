@@ -468,6 +468,9 @@ export default function Dashboard() {
       if (f.tag === "at-risk" && !items.find(i => i.fan.id === f.id)) {
         items.push({ fan: f, reason: "At risk of leaving", message: `Hey ${f.name.split(" ")[0]}! I noticed we haven't chatted in a while. I miss talking to you! I've got something special coming up that I think you'll love`, priority: 3 });
       }
+      if (!f.last_message_at && !items.find(i => i.fan.id === f.id)) {
+        items.push({ fan: f, reason: "Never messaged", message: `Hey ${f.name.split(" ")[0]}! Welcome to my page! I'm so happy you're here. Feel free to DM me anytime — I love getting to know my subscribers. Any special requests? I'm all ears!`, priority: 3.5 });
+      }
       if (f.last_message_at) {
         const daysSince = Math.floor((Date.now() - new Date(f.last_message_at).getTime()) / 86400000);
         if (daysSince >= 7 && !items.find(i => i.fan.id === f.id)) {
@@ -861,9 +864,10 @@ export default function Dashboard() {
                 <h3 className="text-sm font-semibold">Action Center — {actionItems.length} fan{actionItems.length !== 1 ? "s" : ""} need attention</h3>
               </div>
               <button onClick={() => setShowTemplates(true)} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
-                Message Templates
+                All Templates
               </button>
             </div>
+            <p className="text-xs text-[var(--muted)] mb-3">Copy a message below, paste it into your DMs, then hit &quot;Sent&quot; to track it.</p>
             <div className="space-y-2">
               {actionItems.map((item) => {
                 const cs = churnScore(item.fan);
