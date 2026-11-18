@@ -1023,6 +1023,35 @@ export default function Dashboard() {
           <StatCard label="Renewals ≤3d" value={String(urgentRenewals)} sub="message today" accent={urgentRenewals > 0 ? "text-amber-400" : ""} />
         </div>
 
+        {/* Platform Summary — Pro only */}
+        {isPro && fans.some(f => f.platform) && (() => {
+          const platformCounts: Record<string, { count: number; revenue: number }> = {};
+          fans.forEach(f => {
+            const p = f.platform || "";
+            if (!p) return;
+            if (!platformCounts[p]) platformCounts[p] = { count: 0, revenue: 0 };
+            platformCounts[p].count++;
+            platformCounts[p].revenue += f.total_spent || 0;
+          });
+          const topPlatforms = Object.entries(platformCounts).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 4);
+          if (topPlatforms.length === 0) return null;
+          return (
+            <div className="mb-6 flex flex-wrap gap-3">
+              {topPlatforms.map(([p, data]) => {
+                const info = PLATFORM_LABELS[p];
+                if (!info) return null;
+                return (
+                  <div key={p} className={`flex items-center gap-2 rounded-xl border ${info.color} px-3 py-2`}>
+                    <span className="text-sm font-medium">{info.label}</span>
+                    <span className="text-xs opacity-75">{data.count} fans</span>
+                    <span className="text-xs opacity-75">${data.revenue.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* Fan Health Bar */}
         {fans.length >= 2 && (() => {
           const tagOrder: Tag[] = ["whale", "vip", "regular", "new", "at-risk"];
@@ -2258,6 +2287,39 @@ export default function Dashboard() {
                   <p className="text-xs text-red-300/80 mt-1">This fan is at risk of churning. Send a personal message or exclusive offer before their renewal date.</p>
                 </div>
               )}
+              {/* DM Script Generator — Pro */}
+              {isPro && (() => {
+                const firstName = selected.name.split(" ")[0];
+                const cs = churnScore(selected);
+                const daysMsg = selected.last_message_at ? Math.floor((Date.now() - new Date(selected.last_message_at).getTime()) / 86400000) : null;
+                const daysRenewal = selected.renewal_date ? Math.floor((new Date(selected.renewal_date).getTime() - Date.now()) / 86400000) : null;
+                let script = "";
+                if (cs >= 60) {
+                  script = `Hey ${firstName}! I've been thinking about you and I miss chatting. I know it's been a minute, but I've got some exclusive content dropping soon that I think you'll love. Would love to reconnect! What would make your day? 💕`;
+                } else if (daysRenewal !== null && daysRenewal >= 0 && daysRenewal <= 3) {
+                  script = `Hey ${firstName}! Your renewal is right around the corner and I wanted to personally thank you for being here. I've got some amazing things planned and I'd love for you to be part of it. Any special requests? I want to make sure you're getting exactly what you want! 😘`;
+                } else if (selected.tag === "whale") {
+                  script = `Hey ${firstName}! I just wanted to tell you that you're literally one of my favorite people here. Your support means the world to me! 💎 I'm working on something exclusive just for my top supporters — want a sneak peek? ✨`;
+                } else if (daysMsg === null) {
+                  script = `Hey ${firstName}! Welcome! I'm so glad you're here 🎉 I love getting to know my subscribers, so don't be shy — DM me anytime! Is there anything special you'd like to see? I'm all ears! 💕`;
+                } else if (daysMsg > 7) {
+                  script = `Hey ${firstName}! It's been a little while since we last chatted and I wanted to check in. How are you doing? I've been posting some new stuff I think you'd really enjoy! Would love to hear from you 😊`;
+                } else {
+                  script = `Hey ${firstName}! Just wanted to say hi and check in! You've been on my mind. Anything exciting happening? I always love hearing from you! 💬`;
+                }
+                return (
+                  <div className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-brand-400">AI-Generated DM Script</p>
+                      <button onClick={() => { navigator.clipboard.writeText(script); setCopiedId("dm-script"); setTimeout(() => setCopiedId(""), 2000); }}
+                        className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${copiedId === "dm-script" ? "bg-green-500/20 text-green-300" : "bg-brand-500/20 text-brand-400 hover:bg-brand-500/30"}`}>
+                        {copiedId === "dm-script" ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">{script}</p>
+                  </div>
+                );
+              })()}
               <div className="flex gap-3 pt-2">
                 <button onClick={() => markMessaged(selected.id, selected.name)} className="flex-1 rounded-lg bg-green-500/20 border border-green-500/30 py-2 text-sm font-medium text-green-300 hover:bg-green-500/30 transition">
                   ✓ Mark Messaged

@@ -57,6 +57,16 @@ const FEATURES = [
     title: "Weekly Digest",
     desc: "Get a weekly summary of your fan activity, growth, engagement rate, and actionable highlights to keep you on track.",
   },
+  {
+    icon: "🤖",
+    title: "AI DM Scripts",
+    desc: "Get personalized DM scripts generated for each fan based on their spending, activity, and risk level. Copy and paste into your DMs.",
+  },
+  {
+    icon: "🕐",
+    title: "Best Time to Message",
+    desc: "See when your fans are most active so you know the best time to send DMs for maximum engagement.",
+  },
 ];
 
 const PRICING = [
