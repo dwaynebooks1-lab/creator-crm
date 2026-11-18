@@ -38,6 +38,30 @@ export async function sendWelcomeEmail(to: string, name?: string) {
   });
 }
 
+export async function sendSignupNotification(email: string, name?: string) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return;
+
+  return getResend().emails.send({
+    from: FROM,
+    to: adminEmail,
+    subject: `[New Signup] ${name || email} just joined CreatorCRM`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New User Signed Up</h1>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Name:</strong> ${name || "Not provided"}</p>
+          <p style="font-size: 14px; color: #166534; margin: 0;"><strong>Email:</strong> ${email}</p>
+        </div>
+        <a href="https://creatorcrm.net/admin" style="display: inline-block; background: #ec4899; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600;">
+          View in Admin
+        </a>
+        <p style="color: #9ca3af; font-size: 11px; margin-top: 24px;">CreatorCRM admin notification</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendContactNotification(
   ticket: { name: string; email: string; subject: string; message: string }
 ) {

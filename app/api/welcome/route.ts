@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendWelcomeEmail, sendSignupNotification } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     await sendWelcomeEmail(email, name);
+    sendSignupNotification(email, name).catch(() => {});
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Failed to send" }, { status: 500 });
