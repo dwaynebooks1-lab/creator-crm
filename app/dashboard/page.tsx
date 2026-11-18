@@ -141,6 +141,7 @@ export default function Dashboard() {
   const [savedSegments, setSavedSegments] = useState<Array<{ id: string; name: string; filter: Tag | "all"; search: string }>>([]);
   const [showSegmentSave, setShowSegmentSave] = useState(false);
   const [segmentName, setSegmentName] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -640,6 +641,7 @@ export default function Dashboard() {
         setShowGoalModal(false);
         setShowBulkTag(false);
         setShowSpotlight(false);
+        setShowNotifications(false);
         setConfirmDelete(null);
       }
     }
@@ -735,11 +737,57 @@ export default function Dashboard() {
               <span>Search</span>
               <kbd className="rounded border border-[var(--border)] bg-white/5 px-1 py-0.5 text-[10px]">⌘K</kbd>
             </button>
-            {actionItems.length > 0 && (
-              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white" title={`${actionItems.length} fans need attention`}>
-                {actionItems.length}
-              </span>
-            )}
+            {/* Notification Bell */}
+            <div className="relative">
+              <button onClick={() => setShowNotifications(!showNotifications)}
+                className="relative rounded-lg border border-[var(--border)] p-1.5 text-[var(--muted)] hover:text-white transition">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {actionItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white">
+                    {actionItems.length}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl overflow-hidden">
+                    <div className="border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold">Notifications</h3>
+                      <span className="text-xs text-[var(--muted)]">{actionItems.length} alerts</span>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {actionItems.length === 0 ? (
+                        <div className="p-6 text-center">
+                          <p className="text-sm text-green-400 font-medium">All clear!</p>
+                          <p className="text-xs text-[var(--muted)] mt-1">No fans need attention right now.</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-[var(--border)]">
+                          {actionItems.slice(0, 6).map(item => (
+                            <button key={item.fan.id} onClick={() => { setShowNotifications(false); setSelected(item.fan); }}
+                              className="w-full text-left px-4 py-3 hover:bg-white/5 transition">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className={`h-2 w-2 rounded-full ${item.priority <= 2 ? "bg-red-500" : item.priority <= 3.5 ? "bg-amber-500" : "bg-blue-500"}`} />
+                                <span className="text-sm font-medium truncate">{item.fan.name}</span>
+                              </div>
+                              <p className="text-xs text-[var(--muted)] pl-4">{item.reason}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {actionItems.length > 6 && (
+                      <div className="border-t border-[var(--border)] px-4 py-2">
+                        <p className="text-xs text-[var(--muted)] text-center">+ {actionItems.length - 6} more in Action Center</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
             <span className="hidden text-sm text-[var(--muted)] md:inline">
               {user?.user_metadata?.name || user?.email}
             </span>
@@ -1760,10 +1808,32 @@ export default function Dashboard() {
             <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
             <h2 className="text-xl font-bold mb-1">{selected.name}</h2>
             <div className="flex items-center gap-2 mb-4">
-              <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${TAG_COLORS[selected.tag]}`}>{TAG_LABELS[selected.tag]}</span>
+              <div className="relative group">
+                <select
+                  value={selected.tag}
+                  onChange={async (e) => {
+                    const newTag = e.target.value as Tag;
+                    await supabase.from("fans").update({ tag: newTag }).eq("id", selected.id);
+                    setFans(prev => prev.map(f => f.id === selected.id ? { ...f, tag: newTag } : f));
+                    setSelected(prev => prev ? { ...prev, tag: newTag } : null);
+                    setToast(`${selected.name} tagged as ${TAG_LABELS[newTag]}!`);
+                  }}
+                  className={`appearance-none cursor-pointer rounded-full border px-3 py-0.5 text-xs font-medium pr-6 ${TAG_COLORS[selected.tag]} bg-transparent outline-none`}
+                >
+                  {(["whale", "vip", "regular", "new", "at-risk"] as Tag[]).map(t => (
+                    <option key={t} value={t} className="bg-[var(--card)] text-white">{TAG_LABELS[t]}</option>
+                  ))}
+                </select>
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none opacity-50">▼</span>
+              </div>
               {(selected.total_spent || 0) > avgSpend && avgSpend > 0 && (
                 <span className="text-[10px] text-green-400">Above avg spend</span>
               )}
+              {fans.length > 0 && (() => {
+                const rank = [...fans].sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0)).findIndex(f => f.id === selected.id) + 1;
+                const pct = Math.round((rank / fans.length) * 100);
+                return <span className="text-[10px] text-[var(--muted)]">#{rank} of {fans.length} ({pct <= 10 ? "Top 10%" : pct <= 25 ? "Top 25%" : `Top ${pct}%`})</span>;
+              })()}
             </div>
             <div className="space-y-4 mt-4">
               <div className="rounded-lg bg-white/5 p-4">
