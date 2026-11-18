@@ -131,7 +131,7 @@ export default function LandingPage() {
       <section className="px-4 py-20 text-center">
         <div className="mx-auto max-w-3xl">
           <div className="mb-4 inline-block rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs text-brand-400">
-            Trusted by 500+ content creators
+            The CRM built for content creators
           </div>
           <h2 className="mb-6 text-4xl font-bold leading-tight md:text-5xl">
             Your fans are leaving.{" "}
@@ -270,24 +270,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof Stats */}
+      {/* Value Props */}
       <section className="border-y border-[var(--border)] bg-[var(--card)] px-4 py-10">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 text-center md:grid-cols-4">
           <div>
-            <p className="text-2xl font-bold">500+</p>
-            <p className="text-sm text-[var(--muted)]">active creators</p>
+            <p className="text-2xl font-bold">2 min</p>
+            <p className="text-sm text-[var(--muted)]">setup time</p>
           </div>
           <div>
-            <p className="text-2xl font-bold">4+ hrs</p>
-            <p className="text-sm text-[var(--muted)]">saved per day on average</p>
+            <p className="text-2xl font-bold">8</p>
+            <p className="text-sm text-[var(--muted)]">ready-made DM templates</p>
           </div>
           <div>
-            <p className="text-2xl font-bold">23%</p>
-            <p className="text-sm text-[var(--muted)]">less subscriber churn</p>
+            <p className="text-2xl font-bold">$0</p>
+            <p className="text-sm text-[var(--muted)]">to start — free up to 25 fans</p>
           </div>
           <div>
-            <p className="text-2xl font-bold">$1,200+</p>
-            <p className="text-sm text-[var(--muted)]">extra revenue per month</p>
+            <p className="text-2xl font-bold">10+</p>
+            <p className="text-sm text-[var(--muted)]">platforms supported</p>
           </div>
         </div>
       </section>
@@ -306,60 +306,47 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Pain Points */}
       <section className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-16">
-        <div className="mx-auto max-w-6xl">
-          <h3 className="mb-3 text-center text-3xl font-bold">Creators love CreatorCRM</h3>
-          <p className="mb-10 text-center text-[var(--muted)]">Here&apos;s what they have to say</p>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto max-w-4xl">
+          <h3 className="mb-3 text-center text-3xl font-bold">Sound familiar?</h3>
+          <p className="mb-10 text-center text-[var(--muted)]">CreatorCRM was built to solve the problems every creator deals with</p>
+          <div className="grid gap-4 md:grid-cols-2">
             {[
               {
-                quote: "I was losing 8-10 fans a month without even realizing it. After using CreatorCRM for two weeks, my churn dropped to almost zero. The Action Center is a game changer.",
-                name: "Jessica R.",
-                role: "OnlyFans creator, 400+ fans",
-                result: "Saved ~$200/mo in churned fans",
+                problem: "You don't know which fans are about to leave",
+                solution: "Churn risk scoring flags at-risk fans before they cancel, so you can reach out in time.",
               },
               {
-                quote: "I used to spend 3 hours a day figuring out who to message. Now I open CreatorCRM, copy the message, paste it, done. I make more money and have my evenings back.",
-                name: "Marcus T.",
-                role: "Fansly creator, 200+ fans",
-                result: "Cut daily DM time from 3hrs to 45min",
+                problem: "You spend hours figuring out who to DM",
+                solution: "The Action Center tells you exactly who needs a message today and gives you the words to say.",
               },
               {
-                quote: "The churn risk score literally saved me $600 last month. I caught 4 whales about to leave and sent them a personal message just in time. Worth every penny.",
-                name: "Alina K.",
-                role: "Content creator, 150+ fans",
-                result: "Saved $600 in a single month",
+                problem: "Fans expire without you even noticing",
+                solution: "Renewal alerts show who expires in the next 1-3 days with ready-to-send messages.",
               },
               {
-                quote: "I tried tracking fans in a spreadsheet for months. It was a mess. CreatorCRM replaced my entire system in 10 minutes and actually tells me what to do.",
-                name: "Taylor M.",
-                role: "Multi-platform creator, 300+ fans",
-                result: "Replaced spreadsheets in 10 minutes",
+                problem: "You're tracking fans in a spreadsheet (or not at all)",
+                solution: "Import your fans in 2 minutes. CreatorCRM organizes, tags, and prioritizes them for you.",
               },
               {
-                quote: "The renewal alerts alone are worth the subscription. I catch fans right before they expire and send a quick message. My retention went from 60% to over 85%.",
-                name: "Kai D.",
-                role: "OnlyFans creator, 500+ fans",
-                result: "Retention up from 60% to 85%",
+                problem: "You never know what to say in DMs",
+                solution: "8 proven message templates for every situation — welcome, renewal, win-back, VIP. Copy, paste, done.",
               },
               {
-                quote: "As someone who creates on three platforms, the platform tracking feature is incredible. I can finally see which platform actually makes me the most money per fan.",
-                name: "Morgan L.",
-                role: "OF + Fansly + Patreon, 250+ fans",
-                result: "Found most profitable platform",
+                problem: "You have no idea how much each fan is worth",
+                solution: "Track lifetime spend, revenue by tag, and see which fans are your biggest earners at a glance.",
               },
             ].map((t) => (
-              <div key={t.name} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-6 flex flex-col">
-                <div className="mb-3 text-brand-400 text-2xl">&ldquo;</div>
-                <p className="text-sm text-[var(--muted)] leading-relaxed mb-4 flex-1">{t.quote}</p>
-                <div className="mb-3 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-1.5">
-                  <p className="text-xs font-medium text-green-400">{t.result}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{t.name}</p>
-                  <p className="text-xs text-[var(--muted)]">{t.role}</p>
-                </div>
+              <div key={t.problem} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5">
+                <p className="text-sm font-semibold text-red-400 mb-2 flex items-start gap-2">
+                  <span className="shrink-0 mt-0.5">&#10005;</span>
+                  {t.problem}
+                </p>
+                <p className="text-sm text-[var(--muted)] leading-relaxed flex items-start gap-2">
+                  <span className="text-green-400 shrink-0 mt-0.5">&#10003;</span>
+                  {t.solution}
+                </p>
               </div>
             ))}
           </div>
@@ -710,7 +697,7 @@ export default function LandingPage() {
               Get Started Free
             </Link>
           </div>
-          <p className="mt-4 text-xs text-[var(--muted)]">Join 500+ creators already using CreatorCRM</p>
+          <p className="mt-4 text-xs text-[var(--muted)]">Free forever for up to 25 fans. Set up in 2 minutes.</p>
         </div>
       </section>
 

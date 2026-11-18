@@ -101,12 +101,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   billingDuration: { "@type": "QuantitativeValue", value: 1, unitCode: "ANN" },
                 },
               ],
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: "4.9",
-                ratingCount: "127",
-                bestRating: "5",
-              },
             }),
           }}
         />
