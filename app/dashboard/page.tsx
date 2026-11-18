@@ -1124,6 +1124,51 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Recent Activity Feed — Pro locked */}
+        {fans.length >= 3 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock live activity feed to see recent fan interactions" onUpgrade={handleUpgrade} />}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span>📡</span> Recent Activity
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+              </h3>
+              <div className="space-y-2">
+                {(() => {
+                  type ActivityItem = { fan: Fan; type: string; detail: string; time: string; color: string };
+                  const activities: ActivityItem[] = [];
+                  fans.forEach(f => {
+                    if (f.last_message_at) {
+                      activities.push({ fan: f, type: "messaged", detail: `You messaged ${f.name}`, time: f.last_message_at, color: "text-green-400" });
+                    }
+                    if (f.created_at) {
+                      activities.push({ fan: f, type: "added", detail: `${f.name} was added`, time: f.created_at, color: "text-blue-400" });
+                    }
+                    if (f.renewal_date) {
+                      const d = Math.floor((new Date(f.renewal_date).getTime() - Date.now()) / 86400000);
+                      if (d >= 0 && d <= 3) {
+                        activities.push({ fan: f, type: "renewal", detail: `${f.name} renews ${d === 0 ? "today" : d === 1 ? "tomorrow" : `in ${d} days`}`, time: f.renewal_date, color: "text-amber-400" });
+                      }
+                    }
+                  });
+                  return activities
+                    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+                    .slice(0, 6)
+                    .map((a, i) => (
+                      <div key={`${a.fan.id}-${a.type}-${i}`} className="flex items-center gap-3 text-xs">
+                        <span className={`${a.color}`}>
+                          {a.type === "messaged" ? "✉" : a.type === "added" ? "+" : "⏰"}
+                        </span>
+                        <span className="flex-1 text-[var(--muted)]">{a.detail}</span>
+                        <span className="text-[var(--muted)] shrink-0">{daysAgo(a.time)}</span>
+                      </div>
+                    ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search + Filters */}
         <div className="mb-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1 max-w-sm">
