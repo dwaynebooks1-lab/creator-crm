@@ -462,10 +462,19 @@ export default function Settings() {
                 </div>
                 <button
                   onClick={async () => {
-                    const { data: { session: authSession } } = await supabase.auth.getSession();
-                    const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession?.access_token}` } });
-                    const data = await res.json();
-                    if (data.url) window.location.href = data.url;
+                    try {
+                      const { data: { session: authSession } } = await supabase.auth.getSession();
+                      if (!authSession?.access_token) {
+                        alert("Session expired. Please log in again.");
+                        return;
+                      }
+                      const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSession.access_token}` } });
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                      else alert(data.error || "Could not open billing portal");
+                    } catch {
+                      alert("Something went wrong. Please try again.");
+                    }
                   }}
                   className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white transition"
                 >
