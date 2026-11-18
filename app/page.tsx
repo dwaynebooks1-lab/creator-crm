@@ -32,6 +32,21 @@ const FEATURES = [
     title: "Smart Fan Tags",
     desc: "Categorize fans as Whales, VIPs, At-Risk, or New. Prioritize who gets your attention and treat top spenders right.",
   },
+  {
+    icon: "📈",
+    title: "Revenue Trends",
+    desc: "See your 6-month revenue growth at a glance. Compare this month vs last across new fans, revenue, and engagement.",
+  },
+  {
+    icon: "✉️",
+    title: "Custom Templates",
+    desc: "Create and save your own message templates for DMs you send often. Pro users build a personal message library.",
+  },
+  {
+    icon: "🔖",
+    title: "Saved Segments",
+    desc: "Save custom filter combos like 'Whales not messaged in 7 days.' One click to load your most-used fan views.",
+  },
 ];
 
 const PRICING = [
@@ -58,9 +73,12 @@ const PRICING = [
     features: [
       "Everything in Starter",
       "Unlimited fan tracking",
-      "Revenue analytics & charts",
+      "Revenue analytics & trend charts",
+      "Monthly performance comparison",
+      "Custom message templates",
+      "Saved fan segments & filters",
       "CSV import & export",
-      "Retention dashboard",
+      "Retention dashboard & heatmap",
       "Priority support",
     ],
     cta: "Start 7-Day Free Trial",

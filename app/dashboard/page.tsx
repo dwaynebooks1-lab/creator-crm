@@ -134,6 +134,13 @@ export default function Dashboard() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [spotlightQuery, setSpotlightQuery] = useState("");
+  const [customTemplates, setCustomTemplates] = useState<Array<{ id: string; title: string; msg: string }>>([]);
+  const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);
+  const [newTemplateTitle, setNewTemplateTitle] = useState("");
+  const [newTemplateMsg, setNewTemplateMsg] = useState("");
+  const [savedSegments, setSavedSegments] = useState<Array<{ id: string; name: string; filter: Tag | "all"; search: string }>>([]);
+  const [showSegmentSave, setShowSegmentSave] = useState(false);
+  const [segmentName, setSegmentName] = useState("");
 
   const plan = creator?.plan || "free";
   const isPro = plan === "pro";
@@ -175,11 +182,15 @@ export default function Dashboard() {
       setLoading(false);
       loadFans();
 
-      // Load revenue goal + onboarding state
+      // Load revenue goal + onboarding state + custom templates + segments
       try {
         const saved = localStorage.getItem("crm_revenue_goal");
         if (saved) setRevenueGoal(parseFloat(saved));
         if (localStorage.getItem("crm_onboarding_done")) setOnboardingDismissed(true);
+        const tpl = localStorage.getItem("crm_custom_templates");
+        if (tpl) setCustomTemplates(JSON.parse(tpl));
+        const seg = localStorage.getItem("crm_saved_segments");
+        if (seg) setSavedSegments(JSON.parse(seg));
       } catch {}
 
       // Set dynamic page title
@@ -502,6 +513,49 @@ export default function Dashboard() {
 
   const revenueAtRisk = fans.filter(f => churnScore(f) >= 60).reduce((s, f) => s + (f.total_spent || 0), 0);
 
+  const revenueTrend = useMemo(() => {
+    const months: { label: string; revenue: number; fans: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const label = d.toLocaleDateString("en-US", { month: "short" });
+      const monthFans = fans.filter(f => {
+        if (!f.created_at) return i === 0;
+        const cd = new Date(f.created_at);
+        return cd.getFullYear() === y && cd.getMonth() === m;
+      });
+      months.push({ label, revenue: monthFans.reduce((s, f) => s + (f.total_spent || 0), 0), fans: monthFans.length });
+    }
+    return months;
+  }, [fans]);
+
+  const perfComparison = useMemo(() => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+    const thisMonth = fans.filter(f => f.created_at && new Date(f.created_at).getTime() >= thisMonthStart);
+    const lastMonth = fans.filter(f => {
+      if (!f.created_at) return false;
+      const t = new Date(f.created_at).getTime();
+      return t >= lastMonthStart && t < thisMonthStart;
+    });
+    const thisRev = thisMonth.reduce((s, f) => s + (f.total_spent || 0), 0);
+    const lastRev = lastMonth.reduce((s, f) => s + (f.total_spent || 0), 0);
+    const thisMessaged = fans.filter(f => f.last_message_at && new Date(f.last_message_at).getTime() >= thisMonthStart).length;
+    const lastMessaged = fans.filter(f => {
+      if (!f.last_message_at) return false;
+      const t = new Date(f.last_message_at).getTime();
+      return t >= lastMonthStart && t < thisMonthStart;
+    }).length;
+    return {
+      newFans: { current: thisMonth.length, prev: lastMonth.length },
+      revenue: { current: thisRev, prev: lastRev },
+      messaged: { current: thisMessaged, prev: lastMessaged },
+    };
+  }, [fans]);
+
   const messagingStreak = useMemo(() => {
     const days = new Set<string>();
     fans.forEach(f => {
@@ -608,6 +662,48 @@ export default function Dashboard() {
     navigator.clipboard.writeText(msg);
     setCopiedId(id);
     setTimeout(() => setCopiedId(""), 2000);
+  }
+
+  function saveCustomTemplate() {
+    if (!newTemplateTitle.trim() || !newTemplateMsg.trim()) return;
+    const tpl = { id: `custom-${Date.now()}`, title: newTemplateTitle.trim(), msg: newTemplateMsg.trim() };
+    const updated = [...customTemplates, tpl];
+    setCustomTemplates(updated);
+    try { localStorage.setItem("crm_custom_templates", JSON.stringify(updated)); } catch {}
+    setNewTemplateTitle("");
+    setNewTemplateMsg("");
+    setShowNewTemplateForm(false);
+    setToast("Template saved!");
+  }
+
+  function deleteCustomTemplate(id: string) {
+    const updated = customTemplates.filter(t => t.id !== id);
+    setCustomTemplates(updated);
+    try { localStorage.setItem("crm_custom_templates", JSON.stringify(updated)); } catch {}
+    setToast("Template deleted");
+  }
+
+  function saveSegment() {
+    if (!segmentName.trim()) return;
+    const seg = { id: `seg-${Date.now()}`, name: segmentName.trim(), filter, search };
+    const updated = [...savedSegments, seg];
+    setSavedSegments(updated);
+    try { localStorage.setItem("crm_saved_segments", JSON.stringify(updated)); } catch {}
+    setSegmentName("");
+    setShowSegmentSave(false);
+    setToast("Segment saved!");
+  }
+
+  function deleteSegment(id: string) {
+    const updated = savedSegments.filter(s => s.id !== id);
+    setSavedSegments(updated);
+    try { localStorage.setItem("crm_saved_segments", JSON.stringify(updated)); } catch {}
+    setToast("Segment removed");
+  }
+
+  function loadSegment(seg: { filter: Tag | "all"; search: string }) {
+    setFilter(seg.filter);
+    setSearch(seg.search);
   }
 
   const MESSAGE_TEMPLATES = [
@@ -1211,6 +1307,82 @@ export default function Dashboard() {
           );
         })()}
 
+        {/* Revenue Trend — Pro locked */}
+        {fans.length >= 3 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock revenue trends to see your growth over time" onUpgrade={handleUpgrade} />}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <span>📊</span> Revenue Trend (6 Months)
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+              </h3>
+              <div className="flex items-end gap-2 h-32">
+                {(() => {
+                  const maxRev = Math.max(...revenueTrend.map(m => m.revenue), 1);
+                  return revenueTrend.map((m, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-[var(--muted)] font-medium">${m.revenue > 999 ? `${(m.revenue / 1000).toFixed(1)}k` : m.revenue.toLocaleString()}</span>
+                      <div className="w-full flex justify-center">
+                        <div
+                          className={`w-full max-w-[40px] rounded-t-md transition-all ${i === revenueTrend.length - 1 ? "bg-brand-500" : "bg-brand-500/40"}`}
+                          style={{ height: `${Math.max(4, (m.revenue / maxRev) * 100)}px` }}
+                          title={`${m.label}: $${m.revenue.toLocaleString()} from ${m.fans} new fans`}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[var(--muted)]">{m.label}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs text-[var(--muted)]">
+                <span>{revenueTrend.reduce((s, m) => s + m.fans, 0)} fans added in 6 months</span>
+                <span>${revenueTrend.reduce((s, m) => s + m.revenue, 0).toLocaleString()} total</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Performance: This Month vs Last — Pro locked */}
+        {fans.length >= 3 && (
+          <div className="relative mb-6">
+            {!isPro && <ProLock feature="Unlock monthly performance comparison to track your growth" onUpgrade={handleUpgrade} />}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <span>⚡</span> This Month vs Last Month
+                <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-1.5 py-0.5 text-[10px] font-medium text-brand-400">PRO</span>
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: "New Fans", current: perfComparison.newFans.current, prev: perfComparison.newFans.prev, fmt: (v: number) => String(v) },
+                  { label: "Revenue", current: perfComparison.revenue.current, prev: perfComparison.revenue.prev, fmt: (v: number) => `$${v.toLocaleString()}` },
+                  { label: "Fans Messaged", current: perfComparison.messaged.current, prev: perfComparison.messaged.prev, fmt: (v: number) => String(v) },
+                ].map(stat => {
+                  const diff = stat.prev > 0 ? Math.round(((stat.current - stat.prev) / stat.prev) * 100) : stat.current > 0 ? 100 : 0;
+                  const up = stat.current >= stat.prev;
+                  return (
+                    <div key={stat.label} className="text-center">
+                      <p className="text-xs text-[var(--muted)] mb-1">{stat.label}</p>
+                      <p className="text-xl font-bold">{stat.fmt(stat.current)}</p>
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        {stat.prev > 0 || stat.current > 0 ? (
+                          <>
+                            <span className={`text-xs font-medium ${up ? "text-green-400" : "text-red-400"}`}>
+                              {up ? "↑" : "↓"} {Math.abs(diff)}%
+                            </span>
+                            <span className="text-[10px] text-[var(--muted)]">vs {stat.fmt(stat.prev)}</span>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-[var(--muted)]">no data yet</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Fans Leaderboard + Smart Tag Suggestions — Pro locked */}
         {fans.length >= 3 && (
           <div className="relative mb-6">
@@ -1332,6 +1504,25 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Saved Segments — Pro locked */}
+        {isPro && savedSegments.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[var(--muted)] mr-1">Segments:</span>
+            {savedSegments.map(seg => (
+              <div key={seg.id} className="group flex items-center gap-1">
+                <button onClick={() => loadSegment(seg)}
+                  className="rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-400 hover:bg-brand-500/20 transition">
+                  {seg.name}
+                </button>
+                <button onClick={() => deleteSegment(seg.id)}
+                  className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--muted)] hover:text-red-400 transition -ml-0.5">
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Search + Filters */}
         <div className="mb-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1 max-w-sm">
@@ -1359,6 +1550,24 @@ export default function Dashboard() {
                 {t === "all" ? `All (${fans.length})` : `${TAG_LABELS[t]} (${fans.filter(f => f.tag === t).length})`}
               </button>
             ))}
+            {isPro && (filter !== "all" || search.trim()) && (
+              showSegmentSave ? (
+                <div className="flex items-center gap-1.5">
+                  <input type="text" value={segmentName} onChange={e => setSegmentName(e.target.value)}
+                    placeholder="Segment name..." autoFocus
+                    onKeyDown={e => { if (e.key === "Enter") saveSegment(); if (e.key === "Escape") setShowSegmentSave(false); }}
+                    className="rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs text-white outline-none w-32" />
+                  <button onClick={saveSegment} disabled={!segmentName.trim()}
+                    className="rounded-full bg-brand-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">Save</button>
+                  <button onClick={() => setShowSegmentSave(false)} className="text-xs text-[var(--muted)] hover:text-white">&times;</button>
+                </div>
+              ) : (
+                <button onClick={() => { setSegmentName(""); setShowSegmentSave(true); }}
+                  className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)] hover:text-brand-400 hover:border-brand-500/30 transition">
+                  + Save Segment
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -1921,6 +2130,73 @@ export default function Dashboard() {
             <button onClick={() => setShowTemplates(false)} className="absolute top-4 right-4 text-[var(--muted)] hover:text-white text-lg">✕</button>
             <h2 className="text-xl font-bold mb-1">Message Templates</h2>
             <p className="text-sm text-[var(--muted)] mb-4">Ready-to-use messages. Click to copy, then paste into your DMs.</p>
+
+            {/* Custom Templates Section — Pro */}
+            {isPro && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-brand-400">Your Templates</h3>
+                  {!showNewTemplateForm && (
+                    <button onClick={() => setShowNewTemplateForm(true)}
+                      className="rounded-lg bg-brand-500/20 border border-brand-500/30 px-2.5 py-1 text-xs font-medium text-brand-400 hover:bg-brand-500/30 transition">
+                      + New Template
+                    </button>
+                  )}
+                </div>
+                {showNewTemplateForm && (
+                  <div className="rounded-lg border border-brand-500/30 bg-brand-500/5 p-4 mb-3">
+                    <input type="text" value={newTemplateTitle} onChange={e => setNewTemplateTitle(e.target.value)}
+                      placeholder="Template name..."
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition mb-2" />
+                    <textarea value={newTemplateMsg} onChange={e => setNewTemplateMsg(e.target.value)}
+                      placeholder="Write your message template..."
+                      rows={3}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-white outline-none focus:border-brand-500 transition resize-none mb-2" />
+                    <div className="flex gap-2">
+                      <button onClick={saveCustomTemplate} disabled={!newTemplateTitle.trim() || !newTemplateMsg.trim()}
+                        className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition disabled:opacity-50">
+                        Save Template
+                      </button>
+                      <button onClick={() => { setShowNewTemplateForm(false); setNewTemplateTitle(""); setNewTemplateMsg(""); }}
+                        className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-white transition">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {customTemplates.length > 0 ? (
+                  <div className="space-y-2 mb-4">
+                    {customTemplates.map(t => (
+                      <div key={t.id} className="rounded-lg border border-brand-500/20 bg-brand-500/5 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{t.title}</span>
+                            <span className="rounded-full bg-brand-500/20 border border-brand-500/30 px-2 py-0.5 text-[10px] font-medium text-brand-400">Custom</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => copyMessage(t.id, t.msg)}
+                              className={`shrink-0 rounded px-2.5 py-1 text-xs font-medium transition ${copiedId === t.id ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-brand-500/20 text-brand-400 border border-brand-500/30 hover:bg-brand-500/30"}`}>
+                              {copiedId === t.id ? "Copied!" : "Copy"}
+                            </button>
+                            <button onClick={() => deleteCustomTemplate(t.id)}
+                              className="rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-red-400 transition">
+                              &times;
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-[var(--muted)] leading-relaxed">{t.msg}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : !showNewTemplateForm && (
+                  <p className="text-xs text-[var(--muted)] mb-4">No custom templates yet. Create one to save messages you use often.</p>
+                )}
+                <div className="border-t border-[var(--border)] pt-3 mb-1">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Built-in Templates</h3>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               {MESSAGE_TEMPLATES.map((t) => (
                 <div key={t.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4">

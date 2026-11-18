@@ -14,7 +14,7 @@ const FAQ = [
   },
   {
     q: "What does Pro include?",
-    a: "Pro ($29/month) gives you unlimited fan tracking, revenue analytics and charts, CSV import and export, retention dashboard, engagement heatmap, spending distribution, leaderboard, smart tag suggestions, personalized growth tips, and priority support.",
+    a: "Pro ($29/month) gives you unlimited fan tracking, revenue analytics and charts, CSV import and export, retention dashboard, engagement heatmap, spending distribution, leaderboard, smart tag suggestions, personalized growth tips, revenue trend charts, monthly performance comparison, custom message templates, saved fan segments, and priority support.",
   },
   {
     q: "How does the churn risk score work?",
@@ -26,7 +26,7 @@ const FAQ = [
   },
   {
     q: "How do message templates work?",
-    a: "We provide 8 proven message templates for common situations: welcome, renewal reminder, win-back, whale appreciation, re-engagement, upsell, thank you, and casual check-in. Click 'Copy' and paste directly into your DMs. The Action Center also generates personalized messages for each fan that needs attention.",
+    a: "We provide 8 proven message templates for common situations: welcome, renewal reminder, win-back, whale appreciation, re-engagement, upsell, thank you, and casual check-in. Click 'Copy' and paste directly into your DMs. Pro users can also create and save their own custom templates for messages they use often. The Action Center also generates personalized messages for each fan that needs attention.",
   },
   {
     q: "Is my data safe?",
@@ -95,6 +95,8 @@ export default function Help() {
           <h2 className="text-2xl font-bold mb-6">What&apos;s New</h2>
           <div className="space-y-4">
             {[
+              { date: "Nov 2026", title: "Revenue Trends & Performance", desc: "See your 6-month revenue trend chart and compare this month vs last month across fans, revenue, and engagement." },
+              { date: "Nov 2026", title: "Custom Templates & Segments", desc: "Pro users can now create and save their own message templates and fan segments for quick filtering." },
               { date: "Nov 2026", title: "Command Palette", desc: "Press Ctrl+K (or Cmd+K on Mac) to instantly search fans, jump to actions, and navigate the dashboard like a pro." },
               { date: "Nov 2026", title: "Live Payments", desc: "Stripe is now fully integrated. Upgrade to Pro, manage your subscription, and get instant access to premium features." },
               { date: "Nov 2026", title: "Custom Domain", desc: "CreatorCRM is now live at creatorcrm.net with SSL, Cloudflare protection, and branded emails." },
