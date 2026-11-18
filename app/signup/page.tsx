@@ -48,6 +48,9 @@ export default function SignUp() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refCode = searchParams.get("ref") || "";
+  const utmSource = searchParams.get("utm_source") || "";
+  const utmMedium = searchParams.get("utm_medium") || "";
+  const utmCampaign = searchParams.get("utm_campaign") || "";
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -63,7 +66,13 @@ export default function SignUp() {
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name, ...(refCode ? { referred_by: refCode } : {}) } },
+      options: { data: {
+        name,
+        ...(refCode ? { referred_by: refCode } : {}),
+        ...(utmSource ? { utm_source: utmSource } : {}),
+        ...(utmMedium ? { utm_medium: utmMedium } : {}),
+        ...(utmCampaign ? { utm_campaign: utmCampaign } : {}),
+      } },
     });
 
     if (signUpError) {
@@ -79,7 +88,7 @@ export default function SignUp() {
     fetch("/api/welcome", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name }),
+      body: JSON.stringify({ email, name, utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign }),
     }).catch(() => {});
   }
 
@@ -128,10 +137,11 @@ export default function SignUp() {
             ))}
           </div>
           <div className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-            <p className="text-sm italic text-[var(--muted)]">
-              &ldquo;CreatorCRM saved me 3 subscribers in my first week. That alone paid for 3 months of Pro.&rdquo;
-            </p>
-            <p className="text-xs text-brand-400 mt-2">— Content Creator</p>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20 text-green-400 text-sm">✓</div>
+              <span className="text-sm font-medium">Free forever for up to 25 fans</span>
+            </div>
+            <p className="text-xs text-[var(--muted)] pl-11">No credit card required. Upgrade only when you&apos;re ready.</p>
           </div>
         </div>
 

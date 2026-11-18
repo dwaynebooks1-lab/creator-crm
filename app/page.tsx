@@ -758,6 +758,7 @@ export default function LandingPage() {
           <p>CreatorCRM — Built for creators, by creators.</p>
           <div className="flex gap-6">
             <Link href="/help" className="hover:text-white transition">Help</Link>
+            <Link href="/changelog" className="hover:text-white transition">Changelog</Link>
             <Link href="/contact" className="hover:text-white transition">Contact</Link>
             <Link href="/terms" className="hover:text-white transition">Terms</Link>
             <Link href="/privacy" className="hover:text-white transition">Privacy</Link>

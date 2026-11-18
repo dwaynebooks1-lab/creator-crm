@@ -38,9 +38,15 @@ export async function sendWelcomeEmail(to: string, name?: string) {
   });
 }
 
-export async function sendSignupNotification(email: string, name?: string) {
+export async function sendSignupNotification(
+  email: string,
+  name?: string,
+  utm?: { utm_source?: string; utm_medium?: string; utm_campaign?: string }
+) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return;
+
+  const source = [utm?.utm_source, utm?.utm_medium, utm?.utm_campaign].filter(Boolean).join(" / ");
 
   return getResend().emails.send({
     from: FROM,
@@ -51,7 +57,8 @@ export async function sendSignupNotification(email: string, name?: string) {
         <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">New User Signed Up</h1>
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
           <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Name:</strong> ${name || "Not provided"}</p>
-          <p style="font-size: 14px; color: #166534; margin: 0;"><strong>Email:</strong> ${email}</p>
+          <p style="font-size: 14px; color: #166534; margin: 0 0 6px;"><strong>Email:</strong> ${email}</p>
+          ${source ? `<p style="font-size: 14px; color: #166534; margin: 0;"><strong>Source:</strong> ${source}</p>` : ""}
         </div>
         <a href="https://creatorcrm.net/admin" style="display: inline-block; background: #ec4899; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600;">
           View in Admin
