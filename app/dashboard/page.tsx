@@ -2366,6 +2366,20 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Tip: Click on a fan */}
+        {fans.length > 0 && !selected && !onboardingDismissed && (() => {
+          try { if (localStorage.getItem("crm_fan_tip_dismissed")) return null; } catch {}
+          return (
+            <div className="mb-3 flex items-center justify-between rounded-lg border border-brand-500/20 bg-brand-500/5 px-4 py-2.5">
+              <p className="text-xs text-[var(--muted)]">
+                <span className="text-brand-400 font-medium">Tip:</span> Click on any fan to see their profile, DM scripts, churn risk, and more
+              </p>
+              <button onClick={() => { try { localStorage.setItem("crm_fan_tip_dismissed", "1"); } catch {} }}
+                className="text-[10px] text-[var(--muted)] hover:text-white transition ml-4 shrink-0">Dismiss</button>
+            </div>
+          );
+        })()}
+
         {/* Fan Table */}
         <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
           {fans.length === 0 ? (
@@ -2469,7 +2483,7 @@ export default function Dashboard() {
                     const cs = churnScore(fan);
                     const cl = churnLabel(cs);
                     return (
-                    <tr key={fan.id} className={`cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5 ${bulkSelected.has(fan.id) ? "bg-brand-500/5" : ""}`}>
+                    <tr key={fan.id} className={`group cursor-pointer border-b border-[var(--border)] transition hover:bg-white/5 ${bulkSelected.has(fan.id) ? "bg-brand-500/5" : ""}`}>
                       <td className="pl-4 pr-1 py-3" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={bulkSelected.has(fan.id)}
                           onChange={() => toggleBulkSelect(fan.id)}
@@ -2512,6 +2526,9 @@ export default function Dashboard() {
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell" onClick={() => setSelected(fan)}>
                         <span className={`text-xs font-medium ${cl.color}`}>{cl.text}</span>
+                      </td>
+                      <td className="pr-3 py-3" onClick={() => setSelected(fan)}>
+                        <svg className="h-4 w-4 text-[var(--muted)] opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                       </td>
                     </tr>
                     );
