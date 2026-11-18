@@ -93,10 +93,10 @@ export default function Help() {
         <div className="mt-12 rounded-xl border border-brand-500/30 bg-brand-500/5 p-6 text-center">
           <h2 className="text-lg font-bold mb-2">Still need help?</h2>
           <p className="text-sm text-[var(--muted)] mb-4">
-            Can&apos;t find what you&apos;re looking for? We&apos;re here for you.
+            Can&apos;t find what you&apos;re looking for? Send us a message and we&apos;ll get back to you.
           </p>
-          <Link href="/dashboard" className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
-            Go to Dashboard
+          <Link href="/contact" className="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+            Contact Us
           </Link>
         </div>
       </div>

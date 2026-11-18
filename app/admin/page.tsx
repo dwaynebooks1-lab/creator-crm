@@ -37,6 +37,16 @@ interface Announcement {
   created_at: string;
 }
 
+interface Ticket {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
 interface Stats {
   total_users: number;
   pro_users: number;
@@ -77,6 +87,10 @@ export default function AdminDashboard() {
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [announceSaving, setAnnounceSaving] = useState(false);
 
+  // Support tickets
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketFilter, setTicketFilter] = useState<"all" | "open" | "resolved">("open");
+
   // Toast
   const [toast, setToast] = useState("");
 
@@ -102,6 +116,7 @@ export default function AdminDashboard() {
     setCreators(data.creators || []);
     setStats(data.stats);
     setAnnouncements(data.announcements || []);
+    setTickets(data.tickets || []);
     setLoading(false);
   }, []);
 
@@ -176,6 +191,18 @@ export default function AdminDashboard() {
     loadData(token);
   }
 
+  async function handleResolveTicket(id: string) {
+    await adminAction({ action: "resolve_ticket", ticketId: id });
+    showToast("Ticket resolved");
+    loadData(token);
+  }
+
+  async function handleDeleteTicket(id: string) {
+    await adminAction({ action: "delete_ticket", ticketId: id });
+    showToast("Ticket deleted");
+    loadData(token);
+  }
+
   function exportCSV() {
     const headers = ["Name", "Email", "Plan", "Fans", "Revenue Tracked", "Joined"];
     const rows = creators.map((c) => [
@@ -226,7 +253,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const mrr = (stats?.pro_users || 0) * 49;
+  const mrr = (stats?.pro_users || 0) * 29;
 
   return (
     <div className="min-h-screen">
@@ -326,6 +353,75 @@ export default function AdminDashboard() {
           ) : (
             <p className="text-sm text-[var(--muted)]">No announcements yet. Users will see these as a banner on their dashboard.</p>
           )}
+        </div>
+
+        {/* Support Tickets */}
+        <div className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold">Support Tickets</h2>
+              {tickets.filter((t) => t.status === "open").length > 0 && (
+                <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-xs font-medium text-amber-400">
+                  {tickets.filter((t) => t.status === "open").length} open
+                </span>
+              )}
+            </div>
+            <div className="flex gap-1 rounded-lg border border-[var(--border)] p-0.5">
+              {(["open", "all", "resolved"] as const).map((f) => (
+                <button key={f} onClick={() => setTicketFilter(f)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${ticketFilter === f ? "bg-brand-500 text-white" : "text-[var(--muted)] hover:text-white"}`}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(() => {
+            const filtered = tickets.filter((t) => ticketFilter === "all" ? true : t.status === ticketFilter);
+            return filtered.length > 0 ? (
+              <div className="space-y-3">
+                {filtered.map((t) => (
+                  <div key={t.id} className={`rounded-lg border p-4 ${t.status === "open" ? "border-amber-500/30 bg-amber-500/5" : "border-[var(--border)] opacity-60"}`}>
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium border ${t.status === "open" ? "bg-amber-500/20 border-amber-500/30 text-amber-400" : "bg-green-500/20 border-green-500/30 text-green-400"}`}>
+                            {t.status}
+                          </span>
+                          <span className="text-xs text-[var(--muted)]">{t.subject}</span>
+                        </div>
+                        <p className="text-sm font-medium">{t.name}</p>
+                        <p className="text-xs text-[var(--muted)]">{t.email}</p>
+                      </div>
+                      <span className="text-xs text-[var(--muted)] shrink-0">
+                        {new Date(t.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--muted)] mb-3 whitespace-pre-wrap">{t.message}</p>
+                    <div className="flex gap-2">
+                      {t.status === "open" && (
+                        <button onClick={() => handleResolveTicket(t.id)}
+                          className="rounded px-2.5 py-1 text-xs border border-green-500/30 text-green-400 hover:bg-green-500/10 transition">
+                          Mark Resolved
+                        </button>
+                      )}
+                      <a href={`mailto:${t.email}?subject=Re: ${encodeURIComponent(t.subject)}`}
+                        className="rounded px-2.5 py-1 text-xs border border-[var(--border)] text-[var(--muted)] hover:text-white transition">
+                        Reply via Email
+                      </a>
+                      <button onClick={() => handleDeleteTicket(t.id)}
+                        className="rounded px-2.5 py-1 text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--muted)]">
+                {ticketFilter === "open" ? "No open tickets. Nice!" : `No ${ticketFilter} tickets.`}
+              </p>
+            );
+          })()}
         </div>
 
         {/* Activity Log */}

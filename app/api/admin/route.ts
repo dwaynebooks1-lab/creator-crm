@@ -71,7 +71,13 @@ export async function GET(req: NextRequest) {
     .select("id, message, active, created_at")
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ creators: enriched, stats, announcements: announcements || [] });
+  // Get support tickets
+  const { data: tickets } = await admin
+    .from("support_tickets")
+    .select("id, name, email, subject, message, status, created_at")
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ creators: enriched, stats, announcements: announcements || [], tickets: tickets || [] });
 }
 
 export async function POST(req: NextRequest) {
@@ -139,6 +145,20 @@ export async function POST(req: NextRequest) {
   if (body.action === "toggle_announcement") {
     const { announcementId, active } = body;
     await admin.from("announcements").update({ active }).eq("id", announcementId);
+    return NextResponse.json({ success: true });
+  }
+
+  // Resolve ticket
+  if (body.action === "resolve_ticket") {
+    const { ticketId } = body;
+    await admin.from("support_tickets").update({ status: "resolved" }).eq("id", ticketId);
+    return NextResponse.json({ success: true });
+  }
+
+  // Delete ticket
+  if (body.action === "delete_ticket") {
+    const { ticketId } = body;
+    await admin.from("support_tickets").delete().eq("id", ticketId);
     return NextResponse.json({ success: true });
   }
 

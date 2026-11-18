@@ -54,3 +54,22 @@ create table if not exists announcements (
   active boolean default true,
   created_at timestamptz default now()
 );
+
+-- Support tickets (contact form submissions)
+create table if not exists support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  subject text not null,
+  message text not null,
+  status text default 'open' check (status in ('open', 'resolved')),
+  created_at timestamptz default now()
+);
+
+alter table support_tickets enable row level security;
+
+create policy "Anyone can submit a ticket"
+  on support_tickets for insert
+  with check (true);
+
+create index if not exists idx_tickets_status on support_tickets(status, created_at desc);
