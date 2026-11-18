@@ -77,7 +77,19 @@ export async function GET(req: NextRequest) {
     .select("id, name, email, subject, message, status, created_at")
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ creators: enriched, stats, announcements: announcements || [], tickets: tickets || [] });
+  // Get reviews
+  const { data: reviews } = await admin
+    .from("reviews")
+    .select("id, rating, message, name, role, approved, created_at")
+    .order("created_at", { ascending: false });
+
+  // Get leads
+  const { data: leads } = await admin
+    .from("leads")
+    .select("id, email, created_at")
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ creators: enriched, stats, announcements: announcements || [], tickets: tickets || [], reviews: reviews || [], leads: leads || [] });
 }
 
 export async function POST(req: NextRequest) {
@@ -159,6 +171,20 @@ export async function POST(req: NextRequest) {
   if (body.action === "delete_ticket") {
     const { ticketId } = body;
     await admin.from("support_tickets").delete().eq("id", ticketId);
+    return NextResponse.json({ success: true });
+  }
+
+  // Approve/hide review
+  if (body.action === "toggle_review") {
+    const { reviewId, approved } = body;
+    await admin.from("reviews").update({ approved }).eq("id", reviewId);
+    return NextResponse.json({ success: true });
+  }
+
+  // Delete review
+  if (body.action === "delete_review") {
+    const { reviewId } = body;
+    await admin.from("reviews").delete().eq("id", reviewId);
     return NextResponse.json({ success: true });
   }
 
