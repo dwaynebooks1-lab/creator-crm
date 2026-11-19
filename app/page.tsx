@@ -173,6 +173,12 @@ export default function LandingPage() {
             >
               Start Free — No Card Needed
             </Link>
+            <Link
+              href="/demo"
+              className="rounded-lg border border-[var(--border)] px-8 py-3 text-lg font-semibold text-white hover:bg-white/5 transition"
+            >
+              Try Live Demo
+            </Link>
           </div>
           <p className="mt-4 text-sm text-[var(--muted)]">Free forever for up to 25 fans. Pro starts at $29.00/mo.</p>
           {liveStats && liveStats.creators >= 3 && (
